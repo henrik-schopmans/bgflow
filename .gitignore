@@ -77,8 +77,6 @@ docs/datasets
 docs/examples
 docs/nb_examples
 
-
-
 # PyBuilder
 target/
 
@@ -132,4 +130,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 notebooks/Ala2TSF300.npy
+Ala2TSF300.npy
 ChignolinOBC2PT
