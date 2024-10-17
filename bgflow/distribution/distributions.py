@@ -81,20 +81,28 @@ class _SloppyUniform(torch.distributions.Uniform):
 class SloppyUniform(torch.nn.Module):
     def __init__(self, low, high, validate_args=None, tol=1e-5):
         super().__init__()
+
+        self.initialized = False
+
         self.register_buffer("low", low)
         self.register_buffer("high", high)
         self.tol = tol
         self.validate_args = validate_args
 
+        self.initialized = True
+
     def __getattr__(self, name):
-        try:
-            return super().__getattr__(name=name)
-        except AttributeError:
-            uniform = _SloppyUniform(self.low, self.high, self.validate_args, tol=self.tol)
-            if hasattr(uniform, name):
-                return getattr(uniform, name)
-        except:
-            raise AttributeError(f"SloppyUniform has no attribute {name}")
+        if not self.initialized:
+            raise AttributeError("SloppyUniform has not been initialized yet.")
+        else:
+            try:
+                return super().__getattr__(name=name)
+            except AttributeError:
+                uniform = _SloppyUniform(self.low, self.high, self.validate_args, tol=self.tol)
+                if hasattr(uniform, name):
+                    return getattr(uniform, name)
+            except:
+                raise AttributeError(f"SloppyUniform has no attribute {name}")
 
 
 class UniformDistribution(TorchDistribution):
