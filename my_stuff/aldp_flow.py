@@ -18,12 +18,19 @@ builder = bg.BoltzmannGeneratorBuilder(
     dtype=basic.dtype
 )
 
-for i in range(4):
-    builder.add_condition(TORSIONS, on=ANGLES)
-    builder.add_condition(ANGLES, on=TORSIONS)
-for i in range(2): # TODO: Does this really make sense?
-    builder.add_condition(BONDS, on=ANGLES)
-    builder.add_condition(ANGLES, on=BONDS)
+if False:
+    for i in range(4):
+        builder.add_condition(TORSIONS, on=ANGLES)
+        builder.add_condition(ANGLES, on=TORSIONS)
+    for i in range(2):
+        builder.add_condition(BONDS, on=ANGLES)
+        builder.add_condition(ANGLES, on=BONDS)
+else:
+    n_couplings = 4
+    for _ in range(n_couplings):
+        builder.add_condition(TORSIONS, on=(ANGLES, BONDS))
+        builder.add_condition(ANGLES, on=(TORSIONS, BONDS))
+        builder.add_condition(BONDS, on=(TORSIONS, ANGLES))
 
 generator = builder.build_generator()
 
@@ -36,9 +43,9 @@ print("Total number of parameters:", sum(p.numel() for p in generator.parameters
 samples = generator.sample(1000)
 print([item.shape for item in samples])
 
-a = torch.randn(1000, 21, device="cuda")
-b = torch.randn(1000, 20, device="cuda")
-c = torch.randn(1000, 19, device="cuda")
+a = torch.rand(1000, 21, device="cuda")
+b = torch.rand(1000, 20, device="cuda")
+c = torch.rand(1000, 19, device="cuda")
 xs = (a,b,c)
 
 zs = generator._flow.forward(*xs, inverse=True) # This additionally also outputs the log determinant
