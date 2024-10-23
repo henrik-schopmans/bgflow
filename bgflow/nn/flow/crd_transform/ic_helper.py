@@ -124,7 +124,7 @@ def tripod(p1, p2, p3, eps=1e-7, raise_warnings=True, enforce_boundaries=True):
 
     e1 = e1 / e1_norm
     u = p3 - p1
-    e2 = torch.cross(u, e1)
+    e2 = torch.cross(u, e1, dim=-1)
     e2_norm = torch.norm(e2, dim=-1, keepdim=True)
 
     if raise_warnings:
@@ -134,7 +134,7 @@ def tripod(p1, p2, p3, eps=1e-7, raise_warnings=True, enforce_boundaries=True):
         e2_norm = e2_norm.clamp_min(eps)
 
     e2 = e2 / e2_norm
-    e3 = torch.cross(e2, e1)
+    e3 = torch.cross(e2, e1, dim=-1)
     return -e3, -e2, e1
 
 
