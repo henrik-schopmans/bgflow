@@ -10,11 +10,17 @@ __all__ = [
 ]
 
 
-def unnormalized_kl_div(prior, flow, target, n_samples, temperature=1.0):
+def unnormalized_kl_div(prior, flow, target, n_samples, temperature=1.0, energy_regularizer_fn: callable = None):
     z = prior.sample(n_samples, temperature=temperature)
     z = pack_tensor_in_tuple(z)
     *x, dlogp = flow(*z, temperature=temperature)
-    return target.energy(*x, temperature=temperature) - dlogp
+
+    energy = target.energy(*x, temperature=temperature)
+
+    if energy_regularizer_fn is not None:
+        energy = energy_regularizer_fn(energy)
+
+    return energy - dlogp
 
 
 def unormalized_nll(prior, flow, *x, temperature=1.0):
@@ -141,9 +147,9 @@ class BoltzmannGenerator(Energy, Sampler):
     def energy(self, *x, temperature=1.0):
         return unormalized_nll(self._prior, self._flow, *x, temperature=temperature)
 
-    def kldiv(self, n_samples, temperature=1.0):
+    def kldiv(self, n_samples, temperature=1.0, energy_regularizer_fn: callable = None):
         return unnormalized_kl_div(
-            self._prior, self._flow, self._target, n_samples, temperature=temperature
+            self._prior, self._flow, self._target, n_samples, temperature=temperature, energy_regularizer_fn=energy_regularizer_fn,
         )
 
     def log_weights(self, *x, temperature=1.0, normalize=True):
