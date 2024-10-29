@@ -2,9 +2,11 @@ import warnings
 
 import torch
 from ..nn.periodic import WrapPeriodic
+import torch.nn as nn
 import numpy as np
 import traceback
 import bgflow as bg
+from normflows.nets.resnet import ResidualNet
 from torch.utils.checkpoint import checkpoint
 __all__ = ["make_conditioners"]
 
@@ -80,6 +82,27 @@ def _make_dense_conditioner(dim_in, dim_out, hidden=(128, 128), activation=torch
     )
 
 
+def _make_residual_conditioner(dim_in, dim_out, context_features=0, init_identity=True, **kwargs):
+    net = ResidualNet(
+        in_features=dim_in,
+        out_features=dim_out,
+        context_features=context_features if context_features > 0 else None,
+        hidden_features=256,
+        num_blocks=1,
+        activation=nn.ReLU(),
+        dropout_probability=0,
+        use_batch_norm=False,
+        preprocessing=None,
+    )
+
+    if init_identity:
+        DEFAULT_MIN_DERIVATIVE = 1e-3
+        torch.nn.init.constant_(net.final_layer.weight, 0.0)
+        torch.nn.init.constant_(
+            net.final_layer.bias, np.log(np.exp(1 - DEFAULT_MIN_DERIVATIVE) - 1)
+        )
+
+    return net
 
 
 
@@ -223,7 +246,8 @@ def _make_GNN_conditioner(dim_in, dim_out, hidden=(128, 128), activation=torch.n
 
 CONDITIONER_FACTORIES = {
     "GNN": _make_GNN_conditioner,
-    "dense": _make_dense_conditioner
+    "dense": _make_dense_conditioner,
+    "residual": _make_residual_conditioner,
 }
 
 
