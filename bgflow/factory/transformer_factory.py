@@ -20,6 +20,8 @@ def make_transformer(transformer_type, what, shape_info, conditioners, inverse=F
     if "spline_disable_identity_transform" in kwargs:
         spline_disable_identity_transform = kwargs["spline_disable_identity_transform"]
         del kwargs["spline_disable_identity_transform"]
+    else:
+        spline_disable_identity_transform = False
 
     transformer = factory(what=what, shape_info=shape_info, conditioners=conditioners, **kwargs)
 
