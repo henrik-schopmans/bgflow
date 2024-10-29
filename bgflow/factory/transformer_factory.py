@@ -17,6 +17,10 @@ def make_transformer(transformer_type, what, shape_info, conditioners, inverse=F
     """
     factory = TRANSFORMER_FACTORIES[transformer_type]
     transformer = factory(what=what, shape_info=shape_info, conditioners=conditioners, **kwargs)
+
+    if "spline_disable_identity_transform" in kwargs and kwargs["spline_disable_identity_transform"]:
+        transformer._default_settings["enable_identity_init"] = False
+
     if inverse:
         transformer = InverseFlow(transformer)
     return transformer
