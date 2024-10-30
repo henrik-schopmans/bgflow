@@ -105,7 +105,7 @@ class BoltzmannGeneratorBuilder:
     >>>  samples = generator.sample(11)
 
     """
-    def __init__(self, prior_dims, target=None, device=None, dtype=None):
+    def __init__(self, prior_dims, prior_type=None, prior_kwargs=None, target=None, device=None, dtype=None):
         self.default_transformer_type = ConditionalSplineTransformer
         self.default_conditioner_type = "dense"
         self.default_transformer_kwargs = dict()
@@ -122,8 +122,17 @@ class BoltzmannGeneratorBuilder:
         self.transformer_kwargs = dict()
         self.conditioner_type = dict()
         self.conditioner_kwargs = dict()
-        self.prior_type = dict()
-        self.prior_kwargs = dict()
+
+        if prior_type is None:
+            self.prior_type = dict()
+        else:
+            self.prior_type = prior_type
+
+        if prior_kwargs is None:
+            self.prior_kwargs = dict()
+        else:
+            self.prior_kwargs = prior_kwargs
+
         # default targets
         self.targets = dict()
         if target is not None:
