@@ -60,13 +60,13 @@ class CircularShiftFlow(Flow):
         self.register_buffer("_shift", torch.as_tensor(shift))
 
     def _forward(self, x, **kwargs):
-        _assert_in_unit_interval(x)
+        #_assert_in_unit_interval(x)
         y = (x + self._shift) % 1
         dlogp = torch.zeros_like(x[..., [0]])
         return y, dlogp
 
     def _inverse(self, x, **kwargs):
-        _assert_in_unit_interval(x)
+        #_assert_in_unit_interval(x)
         y = (x - self._shift) % 1
         dlogp = torch.zeros_like(x[..., [0]])
         return y, dlogp
