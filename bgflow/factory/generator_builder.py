@@ -78,6 +78,9 @@ class BoltzmannGeneratorBuilder:
     prior_dims : ShapeDictionary
         The shapes of tensors sampled by the prior;
         we often use product distributions as priors that can sample multiple tensors at once.
+    prior_type : Dict[str, bgflow.distribution.distributions.Distribution | callable]
+        The distribution type for each field in prior_dims. Can be either the distribution class, which will
+        take the factory from the default factory list, or a callable that constructs the distribution.
     current_dims : ShapeDictionary
         The "current" shapes; they are initialized with the prior shapes and changed
         according to the flow transformations that are added.
