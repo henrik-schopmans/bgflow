@@ -9,12 +9,11 @@ __all__ = ["make_distribution"]
 
 
 def make_distribution(distribution_type, shape, **kwargs):
+    if distribution_type in DISTRIBUTION_FACTORIES:
+        factory = DISTRIBUTION_FACTORIES[distribution_type]
+    else: # distribution_type is the factory itself
+        factory = distribution_type
 
-    # If distribution_type is a callable (factory function), use it directly
-    if callable(distribution_type):
-        return distribution_type(shape=shape, **kwargs)
-
-    factory = DISTRIBUTION_FACTORIES[distribution_type]
     return factory(shape=shape, **kwargs)
 
 
