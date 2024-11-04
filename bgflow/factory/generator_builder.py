@@ -248,6 +248,7 @@ class BoltzmannGeneratorBuilder:
         self,
         what: TensorInfo | Sequence[TensorInfo],
         on: TensorInfo | Sequence[TensorInfo],
+        add_reverse: bool = False,
         param_groups=tuple(),
         conditioner_type=None,
         transformer_type=None,
@@ -264,6 +265,8 @@ class BoltzmannGeneratorBuilder:
             The tensor(s) to be transformed.
         on : TensorInfo | Sequence[TensorInfo]
             The tensor(s) on which the transformation is conditioned.
+        add_reverse : bool, default=False
+            If True, add also the reverse coupling layer (what and on are swapped).
         **kwargs : Keyword arguments
             Additional keyword arguments for the conditioner factory.
 
@@ -283,27 +286,7 @@ class BoltzmannGeneratorBuilder:
         what = list(what)
         on = list(on)
 
-        overlapping_what_indices = [i for i, w in enumerate(what) if w in on]
-        to_be_merged = [] # list of tuples (split1, split2, original) to remember what to merge later
-
-        for i in overlapping_what_indices:
-            # Add a split layer that splits the overlapping fields randomly into two channels
-            split1 = what[i]._replace(name=what[i].name + "_split1")
-            split2 = what[i]._replace(name=what[i].name + "_split2")
-
-            len_split1 = self.current_dims[what[i]][0] // 2
-            split1_indices = np.random.choice(self.current_dims[what[i]][0], len_split1, replace=False)
-            split2_indices = np.setdiff1d(np.arange(self.current_dims[what[i]][0]), split1_indices)
-
-            assert len(split1_indices) > 0
-            assert len(split2_indices) > 0
-
-            self.add_split(what[i], (split1, split2), [split1_indices, split2_indices])
-
-            to_be_merged.append((split1, split2, what[i]))
-
-            on[on.index(what[i])] = split2
-            what[i] = split1
+        ##### Get transformer and conditioner types and kwargs #####
 
         if transformer_type is None:
             transformer_types = [self.transformer_type.get(el, self.default_transformer_type) for el in what]
@@ -329,33 +312,65 @@ class BoltzmannGeneratorBuilder:
             raise ValueError("Fields with different conditioner_kwargs cannot be transformed together.")
         conditioner_kwargs = conditioner_kwargss[0]
 
-        conditioners = make_conditioners(
-            transformer_type=transformer_type,
-            conditioner_type=conditioner_type,
-            transformer_kwargs=transformer_kwargs,
-            what=what,
-            on=on,
-            shape_info=self.current_dims.copy(),
-            **conditioner_kwargs
-        )
-        transformer = make_transformer(
-            transformer_type=transformer_type,
-            what=what,
-            shape_info=self.current_dims,
-            conditioners=conditioners,
-            **transformer_kwargs
-        )
-        coupling = CouplingFlow(
-            transformer=transformer,
-            transformed_indices=[self.current_dims.index(f) for f in what],
-            cond_indices=[self.current_dims.index(f) for f in on]
-        ).to(**self.ctx)
-        logger.info(
-            f"  + Coupling Layer: "
-            f"({', '.join([field.name for field in on])}) "
-            f"-> ({', '.join([field.name for field in what])})"
-        )
-        self.add_layer(coupling, param_groups=param_groups)
+        ##### Split overlapping fields into two channels #####
+        
+        overlapping_what_indices = [i for i, w in enumerate(what) if w in on]
+        to_be_merged = [] # list of tuples (split1, split2, original) to remember what to merge later
+        for i in overlapping_what_indices:
+            # Add a split layer that splits the overlapping fields randomly into two channels
+            split1 = what[i]._replace(name=what[i].name + "_split1")
+            split2 = what[i]._replace(name=what[i].name + "_split2")
+
+            len_split1 = self.current_dims[what[i]][0] // 2
+            split1_indices = np.random.choice(self.current_dims[what[i]][0], len_split1, replace=False)
+            split2_indices = np.setdiff1d(np.arange(self.current_dims[what[i]][0]), split1_indices)
+
+            assert len(split1_indices) > 0
+            assert len(split2_indices) > 0
+
+            self.add_split(what[i], (split1, split2), [split1_indices, split2_indices])
+
+            to_be_merged.append((split1, split2, what[i]))
+
+            on[on.index(what[i])] = split2
+            what[i] = split1
+
+        ##### Add the coupling layer #####
+            
+        couplings_to_add = [(what, on)]
+        if add_reverse:
+            couplings_to_add.append((on, what))
+
+        for what, on in couplings_to_add: 
+            conditioners = make_conditioners(
+                transformer_type=transformer_type,
+                conditioner_type=conditioner_type,
+                transformer_kwargs=transformer_kwargs,
+                what=what,
+                on=on,
+                shape_info=self.current_dims.copy(),
+                **conditioner_kwargs
+            )
+            transformer = make_transformer(
+                transformer_type=transformer_type,
+                what=what,
+                shape_info=self.current_dims,
+                conditioners=conditioners,
+                **transformer_kwargs
+            )
+            coupling = CouplingFlow(
+                transformer=transformer,
+                transformed_indices=[self.current_dims.index(f) for f in what],
+                cond_indices=[self.current_dims.index(f) for f in on]
+            ).to(**self.ctx)
+            logger.info(
+                f"  + Coupling Layer: "
+                f"({', '.join([field.name for field in on])}) "
+                f"-> ({', '.join([field.name for field in what])})"
+            )
+            self.add_layer(coupling, param_groups=param_groups)
+
+        ##### Merge the split channels back #####
 
         for split1, split2, original in to_be_merged:
             self.add_merge((split1, split2), to=original)
