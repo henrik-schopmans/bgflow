@@ -193,7 +193,7 @@ class ConditionalSplineTransformer(Transformer):
         elif not self._is_circular.any():
             return y_dim
         else:
-            return self._is_circular.sum()
+            return (~self._is_circular).sum()
 
     def _noncircular_indices(self, y_dim):
         if self._is_circular.all():
