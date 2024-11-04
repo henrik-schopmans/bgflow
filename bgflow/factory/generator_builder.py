@@ -46,7 +46,6 @@ def _tuple(thing):
     else:
         return thing,
 
-
 class BoltzmannGeneratorBuilder:
     """Builder class for Boltzmann Generators.
 
@@ -88,8 +87,6 @@ class BoltzmannGeneratorBuilder:
         A list of flow transformations.
     param_groups : Mapping[str, list[torch.nn.Parameter]]
         Parameter groups indexed by group names.
-    # TODO
-
 
     Examples
     --------
@@ -248,38 +245,65 @@ class BoltzmannGeneratorBuilder:
         self.current_dims = self.prior_dims.copy()
 
     def add_condition(
-            self,
-            what,
-            on=tuple(),
-            param_groups=tuple(),
-            conditioner_type=None,
-            transformer_type=None,
-            transformer_kwargs=dict(),
-            **conditioner_kwargs
+        self,
+        what: TensorInfo | Sequence[TensorInfo],
+        on: TensorInfo | Sequence[TensorInfo],
+        param_groups=tuple(),
+        conditioner_type=None,
+        transformer_type=None,
+        transformer_kwargs=dict(),
+        **conditioner_kwargs
     ):
-        """Add a coupling layer, i.e. a transformation of the tensor `what`
-        that is conditioned on the tensors `on`.
+        """Add a coupling layer, i.e. a transformation of the tensor(s) `what`
+        that is conditioned on the tensor(s) `on`. If the channels in `what` and `on`
+        overlap, the overlapping channels are split randomly into two channels.
 
         Parameters
         ----------
-        what : TensorInfo
-            The tensor to be transformed.
-        on : Sequence[TensorInfo]
-            The tensor on which the transformation is conditioned.
+        what : TensorInfo | Sequence[TensorInfo]
+            The tensor(s) to be transformed.
+        on : TensorInfo | Sequence[TensorInfo]
+            The tensor(s) on which the transformation is conditioned.
         **kwargs : Keyword arguments
             Additional keyword arguments for the conditioner factory.
 
         Notes
         -----
-        Always take transformer of what[0].
-
+        Throws an error if different transformer types or kwargs are used for different channels.
+        The same applies to conditioner types and kwargs.
         """
-        on = _tuple(on)
-        if len(on) == 0:
-            raise ValueError("Need to condition on something.")
+
         what = _tuple(what)
         if len(what) == 0:
             raise ValueError("Need to transform something.")
+        on = _tuple(on)
+        if len(on) == 0:
+            raise ValueError("Need to condition on something.")
+
+        what = list(what)
+        on = list(on)
+
+        overlapping_what_indices = [i for i, w in enumerate(what) if w in on]
+        to_be_merged = [] # list of tuples (split1, split2, original) to remember what to merge later
+
+        for i in overlapping_what_indices:
+            # Add a split layer that splits the overlapping fields randomly into two channels
+            split1 = what[i]._replace(name=what[i].name + "_split1")
+            split2 = what[i]._replace(name=what[i].name + "_split2")
+
+            len_split1 = self.current_dims[what[i]][0] // 2
+            split1_indices = np.random.choice(self.current_dims[what[i]][0], len_split1, replace=False)
+            split2_indices = np.setdiff1d(np.arange(self.current_dims[what[i]][0]), split1_indices)
+
+            assert len(split1_indices) > 0
+            assert len(split2_indices) > 0
+
+            self.add_split(what[i], (split1, split2), [split1_indices, split2_indices])
+
+            to_be_merged.append((split1, split2, what[i]))
+
+            on[on.index(what[i])] = split2
+            what[i] = split1
 
         if transformer_type is None:
             transformer_types = [self.transformer_type.get(el, self.default_transformer_type) for el in what]
@@ -304,6 +328,7 @@ class BoltzmannGeneratorBuilder:
         if not all(ckwargs == conditioner_kwargss[0] for ckwargs in conditioner_kwargss):
             raise ValueError("Fields with different conditioner_kwargs cannot be transformed together.")
         conditioner_kwargs = conditioner_kwargss[0]
+
         conditioners = make_conditioners(
             transformer_type=transformer_type,
             conditioner_type=conditioner_type,
@@ -331,6 +356,9 @@ class BoltzmannGeneratorBuilder:
             f"-> ({', '.join([field.name for field in what])})"
         )
         self.add_layer(coupling, param_groups=param_groups)
+
+        for split1, split2, original in to_be_merged:
+            self.add_merge((split1, split2), to=original)
 
     def add_set_constant(self, what, tensor):
         if what in self.current_dims:
