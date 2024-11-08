@@ -8,7 +8,7 @@ from deep_boltzmann.util import ensure_traj, distance_matrix_squared
 
 class HungarianMapper:
     def __init__(self, xref, dim=2, identical_particles=None):
-        """ Permutes identical particles to minimize distance to reference structure.
+        """Permutes identical particles to minimize distance to reference structure.
 
         For a given structure or set of structures finds the permutation of identical particles
         that minimizes the mean square distance to a given reference structure. The optimization
@@ -36,7 +36,7 @@ class HungarianMapper:
         self.ip_indices.sort()
 
     def map(self, X):
-        """ Maps X (configuration or trajectory) to reference structure by permuting identical particles """
+        """Maps X (configuration or trajectory) to reference structure by permuting identical particles"""
         X = ensure_traj(X)
         Y = X.copy()
         C = distance_matrix_squared(
@@ -54,7 +54,7 @@ class HungarianMapper:
         return Y
 
     def is_permuted(self, X):
-        """ Returns True for permuted configurations """
+        """Returns True for permuted configurations"""
         X = ensure_traj(X)
         C = distance_matrix_squared(
             np.tile(self.xref[:, self.ip_indices], (X.shape[0], 1)),

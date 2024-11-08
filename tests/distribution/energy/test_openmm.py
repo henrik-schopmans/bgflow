@@ -1,4 +1,3 @@
-
 import pytest
 import torch
 import warnings
@@ -35,7 +34,6 @@ class OneParticleTestBridge(OpenMMBridge):
             n_workers=n_workers,
             n_simulation_steps=n_simulation_steps,
         )
-
 
 
 @pytest.mark.parametrize("n_workers", [1, 2, 8])

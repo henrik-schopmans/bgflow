@@ -31,21 +31,26 @@ class InvertiblePPPP(Flow):
         - "eye": identity matrix,
         - "reverse": reverse order
     """
-    def __init__(self, dim, shift=True, penalty_parameter=0.1, min_logdet=-2, max_logdet=15, init="eye"):
+
+    def __init__(
+        self,
+        dim,
+        shift=True,
+        penalty_parameter=0.1,
+        min_logdet=-2,
+        max_logdet=15,
+        init="eye",
+    ):
         super(InvertiblePPPP, self).__init__()
         self.dim = dim
         self.u = torch.nn.Parameter(torch.zeros(dim))
         self.v = torch.nn.Parameter(torch.randn(dim))
         initial_weight_matrix, initial_inverse, initial_det = {
-            "eye": (
-                torch.eye(dim),
-                torch.eye(dim),
-                1.0
-            ),
+            "eye": (torch.eye(dim), torch.eye(dim), 1.0),
             "reverse": (
-                torch.eye(dim)[torch.arange(dim-1,-1,-1)],
-                torch.eye(dim)[torch.arange(dim-1,-1,-1)],
-                1.0 if dim % 4 < 2 else -1.0
+                torch.eye(dim)[torch.arange(dim - 1, -1, -1)],
+                torch.eye(dim)[torch.arange(dim - 1, -1, -1)],
+                1.0 if dim % 4 < 2 else -1.0,
             ),
         }[init]
         self.register_buffer("A", initial_weight_matrix)
@@ -55,10 +60,12 @@ class InvertiblePPPP(Flow):
             self.b = torch.nn.Parameter(torch.zeros(dim))
         else:
             self.register_buffer("b", torch.tensor(0.0))
-        self.register_buffer("min_logdet", min_logdet*torch.ones_like(self.detA))
-        self.register_buffer("max_logdet", max_logdet*torch.ones_like(self.detA))
+        self.register_buffer("min_logdet", min_logdet * torch.ones_like(self.detA))
+        self.register_buffer("max_logdet", max_logdet * torch.ones_like(self.detA))
         self.register_buffer("penalty_buffer", torch.zeros_like(self.detA))
-        self.register_buffer("penalty_parameter", penalty_parameter*torch.ones_like(self.detA))
+        self.register_buffer(
+            "penalty_parameter", penalty_parameter * torch.ones_like(self.detA)
+        )
 
     def _compute_products(self):
         u = self.u
@@ -76,11 +83,11 @@ class InvertiblePPPP(Flow):
     @staticmethod
     def _inv_rank_one(v, Ainv, Ainvu, det_update):
         vtAinv = torch.einsum("i,ij->j", v, Ainv)
-        return - 1/det_update * torch.einsum("i,j", Ainvu, vtAinv)
+        return -1 / det_update * torch.einsum("i,j", Ainvu, vtAinv)
 
     @staticmethod
     def _inv_mv_rank_one(Ainvy, v, Ainvu, det_update):
-        return - 1/det_update * torch.einsum("i,k,...k->...i", Ainvu, v, Ainvy)
+        return -1 / det_update * torch.einsum("i,k,...k->...i", Ainvu, v, Ainvy)
 
     def pppp_merge(self, force_merge=True):
         """PPPP update to hidden parameters.
@@ -102,13 +109,11 @@ class InvertiblePPPP(Flow):
                 self.v[:] = torch.randn(self.dim)
                 self.u[:] = 0
                 return False
-            Ainvu, vtAinvu, det_update = (
-                self._compute_products()
-            )
+            Ainvu, vtAinvu, det_update = self._compute_products()
 
             # sanity check
             logabsdet_update = torch.log(torch.abs(det_update))
-            logabsdet_new = torch.log(torch.abs(det_update*self.detA))
+            logabsdet_new = torch.log(torch.abs(det_update * self.detA))
             sane_update = True
             sane_update = sane_update and logabsdet_update > self.min_logdet - 4
             sane_update = sane_update and logabsdet_new > self.min_logdet - 0.5
@@ -116,7 +121,9 @@ class InvertiblePPPP(Flow):
             if sane_update or force_merge:
                 self.detA *= det_update
                 self.A[:] = self.A + torch.einsum("i,j->ij", self.u, self.v)
-                self.Ainv[:] = self.Ainv + self._inv_rank_one(self.v, self.Ainv, Ainvu, det_update)
+                self.Ainv[:] = self.Ainv + self._inv_rank_one(
+                    self.v, self.Ainv, Ainvu, det_update
+                )
                 self.v[:] = torch.randn(self.dim)
                 self.u[:] = 0
                 return True
@@ -124,19 +131,22 @@ class InvertiblePPPP(Flow):
                 return False
 
     def _buffer_penalty(self, a, b):
-        if torch.isclose(self.penalty_parameter, torch.zeros_like(self.penalty_parameter)):
+        if torch.isclose(
+            self.penalty_parameter, torch.zeros_like(self.penalty_parameter)
+        ):
             return self.penalty_parameter
         else:
             self.penalty_buffer = self.penalty_parameter * (
                 self._penalty(
                     torch.log(torch.abs(a)),
                     sigma_left=self.min_logdet,
-                    sigma_right=self.max_logdet)
-                +
-                self._penalty(
+                    sigma_right=self.max_logdet,
+                )
+                + self._penalty(
                     torch.log(torch.abs(b)),
                     sigma_left=self.min_logdet,
-                    sigma_right=self.max_logdet)
+                    sigma_right=self.max_logdet,
+                )
             )
 
     def _forward(self, x, **kwargs):
@@ -159,8 +169,10 @@ class InvertiblePPPP(Flow):
         if self.training:
             Ainvu, vtAinvu, det_update = self._compute_products()
             new_detA = self.detA * det_update
-            dlogp = torch.ones_like(x[...,0,None]) * torch.log(torch.abs(new_detA))
-            y = torch.einsum("ij,...j->...i", self.A, x) + self._mv_rank_one(self.u, self.v, x)
+            dlogp = torch.ones_like(x[..., 0, None]) * torch.log(torch.abs(new_detA))
+            y = torch.einsum("ij,...j->...i", self.A, x) + self._mv_rank_one(
+                self.u, self.v, x
+            )
             self._buffer_penalty(det_update, new_detA)
         else:
             dlogp = torch.ones_like(x[..., 0, None]) * torch.log(torch.abs(self.detA))
@@ -187,12 +199,12 @@ class InvertiblePPPP(Flow):
         if self.training:
             Ainvu, vtAinvu, det_update = self._compute_products()
             new_detA = self.detA * det_update
-            dlogp = - torch.ones_like(y[..., 0, None]) * torch.log(torch.abs(new_detA))
+            dlogp = -torch.ones_like(y[..., 0, None]) * torch.log(torch.abs(new_detA))
             Ainvy = torch.einsum("ij,...j->...i", self.Ainv, y - self.b)
             x = Ainvy + self._inv_mv_rank_one(Ainvy, self.v, Ainvu, det_update)
             self._buffer_penalty(det_update, new_detA)
         else:
-            dlogp = - torch.ones_like(y[..., 0, None]) * torch.log(torch.abs(self.detA))
+            dlogp = -torch.ones_like(y[..., 0, None]) * torch.log(torch.abs(self.detA))
             x = torch.einsum("ij,...j->...i", self.Ainv, y - self.b)
         return x, dlogp
 
@@ -215,18 +227,18 @@ class InvertiblePPPP(Flow):
         with torch.no_grad():
             self.Ainv[:] = _iterative_solve(self.A, self.Ainv)
             if recompute_det:
-                self.detA = torch.det(self.A)*torch.ones_like(self.detA)
+                self.detA = torch.det(self.A) * torch.ones_like(self.detA)
 
     @staticmethod
     def _penalty(x, sigma_left=None, sigma_right=None):
         result = torch.zeros_like(x)
         if sigma_left is not None:
             xprime = torch.relu(sigma_left - x)
-            result += xprime ** 2
+            result += xprime**2
         if sigma_right is not None:
             assert sigma_right > 0
             xprime = torch.relu(x - sigma_right)
-            result += xprime ** 2
+            result += xprime**2
         return result
 
     def train(self, mode):
@@ -255,13 +267,22 @@ class PPPPScheduler:
     reset_optimizer : bool
         Whether to reset the optimizer after merge.
     """
-    def __init__(self, model, optimizer, n_force_merge=10, n_correct=50,
-                 n_correct_steps=1, n_recompute_det=None, reset_optimizer=True):
+
+    def __init__(
+        self,
+        model,
+        optimizer,
+        n_force_merge=10,
+        n_correct=50,
+        n_correct_steps=1,
+        n_recompute_det=None,
+        reset_optimizer=True,
+    ):
         self._blocks = self._find_invertible_pppp_blocks(model)
         self._parameters_to_reset = []
         for b in self._blocks:
             self._parameters_to_reset.append(b.v)
-            #self._parameters_to_reset.append(b.u)
+            # self._parameters_to_reset.append(b.u)
             # keeping the history for u is beneficial for training efficiency
         self.optimizer = optimizer
         self.n_force_merge = n_force_merge
@@ -282,7 +303,10 @@ class PPPPScheduler:
         self.i += 1
         merged = []
         for block in self._blocks:
-            res = block.pppp_merge(force_merge=self.n_force_merge is not None and self.i % self.n_force_merge == 0)
+            res = block.pppp_merge(
+                force_merge=self.n_force_merge is not None
+                and self.i % self.n_force_merge == 0
+            )
             merged.append(res)
         if any(merged) and self.reset_optimizer:
             if isinstance(self.optimizer, torch.optim.Adam):
@@ -292,23 +316,32 @@ class PPPPScheduler:
         if self.n_correct is not None and self.i % self.n_correct == 0:
             for _ in range(self.n_correct_steps):
                 for block in self._blocks:
-                    block.correct(self.n_recompute_det is not None and self.i % self.n_recompute_det == 0)
+                    block.correct(
+                        self.n_recompute_det is not None
+                        and self.i % self.n_recompute_det == 0
+                    )
 
     @classmethod
     def _find_invertible_pppp_blocks(cls, model, warn=True):
         pppp_list = []
         if isinstance(model, InvertiblePPPP):
             pppp_list.append(model)
-        #elif isinstance(model, InverseFlow) and isinstance(model._delegate, InvertiblePPPP):
+        # elif isinstance(model, InverseFlow) and isinstance(model._delegate, InvertiblePPPP):
         #    pppp_list.append(model._delegate)
         elif isinstance(model, torch.nn.Module):
             for block in model.children():
-                pppp_list += PPPPScheduler._find_invertible_pppp_blocks(block, warn=False)
+                pppp_list += PPPPScheduler._find_invertible_pppp_blocks(
+                    block, warn=False
+                )
         elif isinstance(model, Iterable) or hasattr(model, "__iter__"):
             for block in model:
-                pppp_list += PPPPScheduler._find_invertible_pppp_blocks(block, warn=False)
+                pppp_list += PPPPScheduler._find_invertible_pppp_blocks(
+                    block, warn=False
+                )
         if len(pppp_list) == 0 and warn:
-            warnings.warn("PPPPScheduler not effective. No InvertiblePPPP blocks found in model.")
+            warnings.warn(
+                "PPPPScheduler not effective. No InvertiblePPPP blocks found in model."
+            )
         return pppp_list
 
     def penalty(self):
@@ -326,9 +359,9 @@ class PPPPScheduler:
 
 
 _iterative_solve_coefficients = {
-    2: (-1., -2.),
-    3: (1., 3., -3.),
-    7: (1./16., 120., -393., 735., -861., 651., -315., 93., -15.)
+    2: (-1.0, -2.0),
+    3: (1.0, 3.0, -3.0),
+    7: (1.0 / 16.0, 120.0, -393.0, 735.0, -861.0, 651.0, -315.0, 93.0, -15.0),
 }
 
 

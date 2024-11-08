@@ -3,7 +3,11 @@
 import torch
 
 
-__all__ = ["AbstractSamplerState", "default_set_samples_hook", "default_extract_sample_hook"]
+__all__ = [
+    "AbstractSamplerState",
+    "default_set_samples_hook",
+    "default_extract_sample_hook",
+]
 
 
 class AbstractSamplerState:
@@ -23,14 +27,24 @@ class AbstractSamplerState:
         """
         raise NotImplementedError()
 
-    def evaluate_energy_force(self, energy_model, evaluate_energies=True, evaluate_forces=True):
+    def evaluate_energy_force(
+        self, energy_model, evaluate_energies=True, evaluate_forces=True
+    ):
         """Return a new state with updated energies/forces."""
         state = self.as_dict()
         evaluate_energies = evaluate_energies and not state["energies_up_to_date"]
-        energies = energy_model.energy(*state["samples"])[..., 0] if evaluate_energies else state["energies"]
+        energies = (
+            energy_model.energy(*state["samples"])[..., 0]
+            if evaluate_energies
+            else state["energies"]
+        )
 
         evaluate_forces = evaluate_forces and not state["forces_up_to_date"]
-        forces = energy_model.force(*state["samples"]) if evaluate_forces else state["forces"]
+        forces = (
+            energy_model.force(*state["samples"])
+            if evaluate_forces
+            else state["forces"]
+        )
         return self.replace(energies=energies, forces=forces)
 
     def replace(self, **kwargs):
@@ -59,7 +73,7 @@ class AbstractSamplerState:
                 "samples": tuple(
                     _map_to_primary_cell(x, cell)
                     for x, cell in zip(kwargs["samples"], box_vectors)
-                )
+                ),
             }
         return self._replace(**kwargs)
 

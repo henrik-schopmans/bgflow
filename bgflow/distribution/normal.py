@@ -7,7 +7,12 @@ from .energy.base import Energy
 from .sampling.base import Sampler
 
 
-__all__ = ["NormalDistribution", "TruncatedNormalDistribution", "MeanFreeNormalDistribution", "CircularNormalDistribution"]
+__all__ = [
+    "NormalDistribution",
+    "TruncatedNormalDistribution",
+    "MeanFreeNormalDistribution",
+    "CircularNormalDistribution",
+]
 
 
 def _is_symmetric_matrix(m):
@@ -35,11 +40,13 @@ class NormalDistribution(Energy, Sampler):
             diag = torch.exp(-0.5 * self._log_diag)
             x = x @ self._rot
             x = x * diag
-        x = x / (temperature ** 0.5)
+        x = x / (temperature**0.5)
         return 0.5 * x.pow(2).sum(dim=-1, keepdim=True) + self._log_Z(temperature)
 
     def _log_Z(self, temperature=1.0):
-        temperature = torch.as_tensor(temperature, dtype=self._mean.dtype, device=self._mean.device)
+        temperature = torch.as_tensor(
+            temperature, dtype=self._mean.dtype, device=self._mean.device
+        )
         log_z = self.dim / 2 * torch.log(2 * np.pi * temperature)
         if self._has_cov:
             log_z = log_z + 1 / 2 * self._log_diag.sum()
@@ -49,15 +56,19 @@ class NormalDistribution(Energy, Sampler):
     def _eigen(cov):
         try:
             diag, rot = torch.linalg.eig(cov)
-            assert (diag.imag.abs() < 1e-6).all(), "`cov` possesses complex valued eigenvalues"
+            assert (
+                diag.imag.abs() < 1e-6
+            ).all(), "`cov` possesses complex valued eigenvalues"
             diag, rot = diag.real, rot.real
         except AttributeError:
             # old implementation
             diag, rot = torch.eig(cov, eigenvectors=True)
-            assert (diag[:,1].abs() < 1e-6).all(), "`cov` possesses complex valued eigenvalues"
-            diag = diag[:,0] 
+            assert (
+                diag[:, 1].abs() < 1e-6
+            ).all(), "`cov` possesses complex valued eigenvalues"
+            diag = diag[:, 0]
         return diag + 1e-6, rot
-            
+
     def set_cov(self, cov):
         self._has_cov = True
         assert (
@@ -73,7 +84,9 @@ class NormalDistribution(Energy, Sampler):
         self.register_buffer("_rot", rot)
 
     def _sample_with_temperature(self, n_samples, temperature=1.0):
-        samples = torch.randn(n_samples, self.dim, dtype=self._mean.dtype, device=self._mean.device)
+        samples = torch.randn(
+            n_samples, self.dim, dtype=self._mean.dtype, device=self._mean.device
+        )
         if self._has_cov:
             samples = samples.to(self._rot)
             inv_diag = torch.exp(0.5 * self._log_diag)
@@ -82,7 +95,7 @@ class NormalDistribution(Energy, Sampler):
         if isinstance(temperature, torch.Tensor):
             samples = samples * temperature.sqrt()
         else:
-            samples = samples * (temperature ** 0.5)
+            samples = samples * (temperature**0.5)
         if self._has_mean:
             samples = samples.to(self._mean)
             samples = samples + self._mean
@@ -118,6 +131,7 @@ class TruncatedNormalDistribution(Energy, Sampler):
     is_learnable : bool
         Whether sigma and mu are learnable parameters.
     """
+
     def __init__(
         self,
         mu,
@@ -126,7 +140,7 @@ class TruncatedNormalDistribution(Energy, Sampler):
         upper_bound=torch.tensor(np.infty),
         assert_range=True,
         sampling_method="icdf",
-        is_learnable=False
+        is_learnable=False,
     ):
         for t in [mu, sigma, lower_bound, upper_bound]:
             assert type(t) is torch.Tensor
@@ -145,7 +159,9 @@ class TruncatedNormalDistribution(Energy, Sampler):
         self.register_buffer("_lower_bound", lower_bound.to(mu))
         self.assert_range = assert_range
 
-        self._standard_normal = torch.distributions.normal.Normal(torch.tensor(0.0).to(mu), torch.tensor(1.0).to(mu))
+        self._standard_normal = torch.distributions.normal.Normal(
+            torch.tensor(0.0).to(mu), torch.tensor(1.0).to(mu)
+        )
 
         if sampling_method == "rejection":
             self._sample_impl = self._rejection_sampling
@@ -153,8 +169,12 @@ class TruncatedNormalDistribution(Energy, Sampler):
             self._sample_impl = self._icdf_sampling
             alpha = (self._lower_bound - self._mu) / self._sigma
             beta = (self._upper_bound - self._mu) / self._sigma
-            self.register_buffer("_cdf_lower_bound", self._standard_normal.cdf(alpha.detach()))
-            self.register_buffer("_cdf_upper_bound", self._standard_normal.cdf(beta.detach()))
+            self.register_buffer(
+                "_cdf_lower_bound", self._standard_normal.cdf(alpha.detach())
+            )
+            self.register_buffer(
+                "_cdf_upper_bound", self._standard_normal.cdf(beta.detach())
+            )
         else:
             raise ValueError(f'Unknown sampling method "{sampling_method}"')
 
@@ -168,15 +188,26 @@ class TruncatedNormalDistribution(Energy, Sampler):
     def _rejection_sampling(self, n_samples, temperature):
         sigma = self._sigma * np.sqrt(temperature)
         rejected = torch.ones(n_samples, device=self._mu.device, dtype=bool)
-        samples = torch.empty(n_samples, *self.event_shape, device=self._mu.device, dtype=self._mu.dtype)
+        samples = torch.empty(
+            n_samples, *self.event_shape, device=self._mu.device, dtype=self._mu.dtype
+        )
         while True:
             n_rejected = (rejected).long().sum()
-            samples[rejected] = torch.randn(
-                n_rejected, *self.event_shape, device=self._mu.device, dtype=self._mu.dtype
-            ) * sigma + self._mu
+            samples[rejected] = (
+                torch.randn(
+                    n_rejected,
+                    *self.event_shape,
+                    device=self._mu.device,
+                    dtype=self._mu.dtype,
+                )
+                * sigma
+                + self._mu
+            )
             rejected = torch.any(
-                ((samples > self._upper_bound) | (samples < self._lower_bound)).view(n_samples, -1),
-                dim=-1
+                ((samples > self._upper_bound) | (samples < self._lower_bound)).view(
+                    n_samples, -1
+                ),
+                dim=-1,
             )
             if not torch.any(rejected):
                 break
@@ -217,10 +248,15 @@ class TruncatedNormalDistribution(Energy, Sampler):
         return self._standard_normal.icdf(r) * self._sigma + self._mu
 
     def cdf(self, x):
-        return (self._standard_normal.cdf((x - self._mu)/self._sigma) - self._cdf_lower_bound)/self.Z
+        return (
+            self._standard_normal.cdf((x - self._mu) / self._sigma)
+            - self._cdf_lower_bound
+        ) / self.Z
 
     def log_prob(self, x):
-        return self._standard_normal.log_prob((x - self._mu)/self._sigma) - torch.log(self.Z * self._sigma)
+        return self._standard_normal.log_prob((x - self._mu) / self._sigma) - torch.log(
+            self.Z * self._sigma
+        )
 
     @property
     def Z(self):
@@ -251,9 +287,9 @@ class TruncatedNormalDistribution(Energy, Sampler):
 
 
 class MeanFreeNormalDistribution(Energy, Sampler):
-    """ Mean-free normal distribution. """
+    """Mean-free normal distribution."""
 
-    def __init__(self, dim, n_particles, std=1., two_event_dims=True):
+    def __init__(self, dim, n_particles, std=1.0, two_event_dims=True):
         if two_event_dims:
             super().__init__([n_particles, dim // n_particles])
         else:
@@ -267,11 +303,14 @@ class MeanFreeNormalDistribution(Energy, Sampler):
     def _energy(self, x):
         x = self._remove_mean(x).view(-1, self._dim)
         # TODO: make consistent
-        return 0.5 * x.pow(2).sum(dim=-1, keepdim=True) / self._std ** 2
+        return 0.5 * x.pow(2).sum(dim=-1, keepdim=True) / self._std**2
 
-    def sample(self, n_samples, temperature=1.):
-        x = torch.ones((n_samples, self._n_particles, self._spacial_dims), dtype=self._std.dtype,
-                         device=self._std.device).normal_(mean=0, std=self._std)
+    def sample(self, n_samples, temperature=1.0):
+        x = torch.ones(
+            (n_samples, self._n_particles, self._spacial_dims),
+            dtype=self._std.dtype,
+            device=self._std.device,
+        ).normal_(mean=0, std=self._std)
         x = self._remove_mean(x)
         if not self._two_event_dims:
             x = x.view(-1, self._dim)
@@ -284,8 +323,8 @@ class MeanFreeNormalDistribution(Energy, Sampler):
 
 
 class CircularNormalDistribution(Energy, Sampler):
-# TODO: test
-    """ Wrapper for pytorch VonMises distribution.
+    # TODO: test
+    """Wrapper for pytorch VonMises distribution.
     Output is mapped to the [0,1] interval instead of the original [-pi,pi].
 
     Sampling from this distribution becomes extremely slow for big values of sigma (above 1),
@@ -294,10 +333,12 @@ class CircularNormalDistribution(Energy, Sampler):
     def __init__(self, mu: torch.Tensor, sigma):
         assert type(mu) is torch.Tensor
         if torch.any(torch.as_tensor(sigma > 3.6)):
-            warnings.warn("CircularNormalDistribution with sigma greater than 1 can be quite slow."
-              "Use UniformDistribution instead")
+            warnings.warn(
+                "CircularNormalDistribution with sigma greater than 1 can be quite slow."
+                "Use UniformDistribution instead"
+            )
         loc = 2 * np.pi * (mu - 0.5)
-        concentration = (2 * np.pi * sigma)**(-2)
+        concentration = (2 * np.pi * sigma) ** (-2)
         self._delegate = Independent(VonMises(loc, concentration), 1)
         super().__init__(dim=mu.shape)
 
@@ -320,5 +361,7 @@ class CircularNormalDistribution(Energy, Sampler):
             return getattr(self._delegate, name)
         except AttributeError as e:
             msg = str(e)
-            msg = msg.replace(self._delegate.__class__.__name__, "CircularNormalDistribution")
+            msg = msg.replace(
+                self._delegate.__class__.__name__, "CircularNormalDistribution"
+            )
             raise AttributeError(msg)

@@ -79,13 +79,13 @@ _INIT_ICS2XYZ_DET_PERMUTATION_SIGNS = torch.FloatTensor(
 
 
 def outer(x, y):
-    """ outer product between input tensors """
+    """outer product between input tensors"""
     return x[..., None] @ y[..., None, :]
 
 
 def skew(x):
     """
-        returns skew symmetric 3x3 form of a 3 dim vector
+    returns skew symmetric 3x3 form of a 3 dim vector
     """
     assert len(x.shape) > 1, "`x` requires at least 2 dimensions"
     zero = torch.zeros(*x.shape[:-1]).to(x)
@@ -102,17 +102,17 @@ def skew(x):
 
 
 def det2x2(a):
-    """ batch determinant of a 2x2 matrix """
+    """batch determinant of a 2x2 matrix"""
     return a[..., 0, 0] * a[..., 1, 1] - a[..., 1, 0] * a[..., 0, 1]
 
 
 def det3x3(a):
-    """ batch determinant of a 3x3 matrix """
+    """batch determinant of a 3x3 matrix"""
     return (torch.cross(a[..., 0, :], a[..., 1, :], dim=-1) * a[..., 2, :]).sum(dim=-1)
 
 
 def tripod(p1, p2, p3, eps=1e-7, raise_warnings=True, enforce_boundaries=True):
-    """ computes a unique orthogonal basis for input points """
+    """computes a unique orthogonal basis for input points"""
     e1 = p2 - p1
     e1_norm = torch.norm(e1, dim=-1, keepdim=True)
 
@@ -139,7 +139,7 @@ def tripod(p1, p2, p3, eps=1e-7, raise_warnings=True, enforce_boundaries=True):
 
 
 def orientation(p1, p2, p3, eps=1e-7, raise_warnings=True, enforce_boundaries=True):
-    """ computes unique orthogonal basis transform for input points """
+    """computes unique orthogonal basis transform for input points"""
     return torch.stack(
         tripod(p1, p2, p3, eps, raise_warnings, enforce_boundaries), dim=-1
     )
@@ -147,8 +147,8 @@ def orientation(p1, p2, p3, eps=1e-7, raise_warnings=True, enforce_boundaries=Tr
 
 def dist_deriv(x1, x2, eps=1e-7, enforce_boundaries=True, raise_warnings=True):
     """
-        computes distance between input points together with
-        the Jacobian wrt to `x1`
+    computes distance between input points together with
+    the Jacobian wrt to `x1`
     """
     r = x2 - x1
     rnorm = torch.norm(r, dim=-1, keepdim=True)
@@ -167,8 +167,8 @@ def dist_deriv(x1, x2, eps=1e-7, enforce_boundaries=True, raise_warnings=True):
 
 def angle_deriv(x1, x2, x3, eps=1e-7, enforce_boundaries=True, raise_warnings=True):
     """
-        computes angle between input points together with
-        the Jacobian wrt to `x1`
+    computes angle between input points together with
+    the Jacobian wrt to `x1`
     """
     r12 = x1 - x2
     r12_norm = torch.norm(r12, dim=-1, keepdim=True)
@@ -214,8 +214,8 @@ def torsion_deriv(
     x1, x2, x3, x4, eps=1e-7, enforce_boundaries=True, raise_warnings=True
 ):
     """
-        computes torsion angle between input points together with
-        the Jacobian wrt to `x1`.
+    computes torsion angle between input points together with
+    the Jacobian wrt to `x1`.
     """
     b0 = -1.0 * (x2 - x1)
 
@@ -310,15 +310,15 @@ def _permutation_parity(perm):
 
 
 def _determinant_from_permutations(mat, permutations, signs):
-    """ The determinant of a NxN matrix A is
+    """The determinant of a NxN matrix A is
 
-        \\det A = \\sum_{\\sigma} \\sign{\\sigma} \\prod_{i} A[i, \\sigma[i]]
+    \\det A = \\sum_{\\sigma} \\sign{\\sigma} \\prod_{i} A[i, \\sigma[i]]
 
-        where the sum is over all possible permutation \\sigma of {1, ..., N}
+    where the sum is over all possible permutation \\sigma of {1, ..., N}
 
-        If we know the non-vanishing permutations and their signs, we can compute it explicitly.
-        The function takes a matrix, all non-vanishing permutations with corresponding signs and
-        uses it to compute the determinant of it.
+    If we know the non-vanishing permutations and their signs, we can compute it explicitly.
+    The function takes a matrix, all non-vanishing permutations with corresponding signs and
+    uses it to compute the determinant of it.
     """
     n = mat.shape[-1]
     sliced = (
@@ -328,11 +328,11 @@ def _determinant_from_permutations(mat, permutations, signs):
 
 
 def _to_euler_angles(x, y, z):
-    """ converts a basis made of three orthonormal vectors into the corresponding proper x-y-z euler angles
-        output values are
-        alpha in [-pi, pi]
-        beta in [0, pi]
-        gamma in [-pi, pi]
+    """converts a basis made of three orthonormal vectors into the corresponding proper x-y-z euler angles
+    output values are
+    alpha in [-pi, pi]
+    beta in [0, pi]
+    gamma in [-pi, pi]
     """
     alpha = torch.atan2(z[..., 0], -z[..., 1])
     beta = z[..., 2]
@@ -342,7 +342,7 @@ def _to_euler_angles(x, y, z):
 
 
 def _rotmat3x3(theta, axis):
-    """ computes the matrix corresponding to a 2D rotation around `axis` in 3D """
+    """computes the matrix corresponding to a 2D rotation around `axis` in 3D"""
     r = torch.eye(3, dtype=theta.dtype, device=theta.device).repeat(
         *theta.shape[:-1], 1, 1
     )
@@ -355,11 +355,11 @@ def _rotmat3x3(theta, axis):
 
 
 def _from_euler_angles(alpha, beta, gamma):
-    """ converts proper euler angles in x-y-z representation into the corresponding rotation matrix
-        input values are
-        alpha in [-pi, pi]
-        beta in [-1, 1]
-        gamma in [-pi, pi]
+    """converts proper euler angles in x-y-z representation into the corresponding rotation matrix
+    input values are
+    alpha in [-pi, pi]
+    beta in [-1, 1]
+    gamma in [-pi, pi]
     """
     beta = beta.acos()
     xrot = _rotmat3x3(alpha, axis=2)
@@ -372,9 +372,9 @@ def _from_euler_angles(alpha, beta, gamma):
 def ic2xyz_deriv(
     p1, p2, p3, d14, a124, t1234, eps=1e-7, enforce_boundaries=True, raise_warnings=True
 ):
-    """ computes the xyz coordinates from internal coordinates
-        relative to points `p1`, `p2`, `p3` together with its
-        jacobian with respect to `p1`.
+    """computes the xyz coordinates from internal coordinates
+    relative to points `p1`, `p2`, `p3` together with its
+    jacobian with respect to `p1`.
     """
 
     v1 = p1 - p2
@@ -455,9 +455,9 @@ def ic2xyz_deriv(
 def ic2xy0_deriv(
     p1, p2, d14, a124, eps=1e-7, enforce_boundaries=True, raise_warnings=True
 ):
-    """ computes the xy coordinates (z set to 0) for the given
-        internal coordinates together with the Jacobian
-        with respect to `p1`.
+    """computes the xy coordinates (z set to 0) for the given
+    internal coordinates together with the Jacobian
+    with respect to `p1`.
     """
 
     t1234 = torch.Tensor([[0.5 * np.pi]]).to(p1)
@@ -489,22 +489,22 @@ def init_ics2xyz(
     enforce_boundaries=True,
     raise_warnings=True,
 ):
-    """ computes the first three points given initial ICs and the position of the first point
-        Parameters:
-        -----------
-        x0: first point
-        d01: distance between x0 and x1
-        d12: distance between x1 and x2
-        a021: angle between (x2 - x0) and (x1 - x0)
-        alpha: first euler angle (in [-pi, pi])
-        beta: second euler angle (in [-1, 1])
-        gamma: third euler angle (in [-pi, pi])
+    """computes the first three points given initial ICs and the position of the first point
+    Parameters:
+    -----------
+    x0: first point
+    d01: distance between x0 and x1
+    d12: distance between x1 and x2
+    a021: angle between (x2 - x0) and (x1 - x0)
+    alpha: first euler angle (in [-pi, pi])
+    beta: second euler angle (in [-1, 1])
+    gamma: third euler angle (in [-pi, pi])
 
-        Returns:
-        x0: first point
-        x1: second point
-        x2: third point
-        dlogp: density change
+    Returns:
+    x0: first point
+    x1: second point
+    x2: third point
+    dlogp: density change
     """
 
     # enable grad to use autograd for jacobian computation
@@ -576,24 +576,24 @@ def init_ics2xyz(
 
 
 def init_xyz2ics(x0, x1, x2, eps=1e-7, enforce_boundaries=True, raise_warnings=True):
-    """ computes the initial ICs and the position of the first point given first three points
+    """computes the initial ICs and the position of the first point given first three points
 
-        Parameters:
-        -----------
-        x0: first point
-        x1: second point
-        x2: third point
+    Parameters:
+    -----------
+    x0: first point
+    x1: second point
+    x2: third point
 
-        Returns:
-        --------
-        x0: first point
-        d01: distance between x0 and x1
-        d12: distance between x1 and x2
-        a021: angle between (x2 - x0) and (x1 - x0)
-        alpha: first euler angle (in [-pi, pi])
-        beta: second euler angle (in [-1, 1])
-        gamma: third euler angle (in [-pi, pi])
-        dlogp: density change
+    Returns:
+    --------
+    x0: first point
+    d01: distance between x0 and x1
+    d12: distance between x1 and x2
+    a021: angle between (x2 - x0) and (x1 - x0)
+    alpha: first euler angle (in [-pi, pi])
+    beta: second euler angle (in [-1, 1])
+    gamma: third euler angle (in [-pi, pi])
+    dlogp: density change
     """
 
     # enable grad to use autograd for jacobian computation

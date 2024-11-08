@@ -6,8 +6,11 @@ from typing import Iterable
 
 
 __all__ = [
-    "brute_force_jacobian_trace", "brute_force_jacobian",
-    "batch_jacobian", "get_jacobian", "requires_grad"
+    "brute_force_jacobian_trace",
+    "brute_force_jacobian",
+    "batch_jacobian",
+    "get_jacobian",
+    "requires_grad",
 ]
 
 
@@ -145,10 +148,11 @@ def get_jacobian(fun, x):
     z.requires_grad_(True)
     y = fun(z)
     out_grad = torch.eye(d, device=x.device, dtype=x.dtype).tile(n, 1)
-    j = torch.autograd.grad(y, z, out_grad, create_graph=True, retain_graph=True)[0].view(*shape, d, d)
+    j = torch.autograd.grad(y, z, out_grad, create_graph=True, retain_graph=True)[
+        0
+    ].view(*shape, d, d)
     return Jacobian(
-        y=einops.rearrange(y, "(n i) j -> n i j", i=d)[:, 0, :].view(*shape, -1),
-        jac=j
+        y=einops.rearrange(y, "(n i) j -> n i j", i=d)[:, 0, :].view(*shape, -1), jac=j
     )
 
 

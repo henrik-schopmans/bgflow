@@ -1,4 +1,3 @@
-
 import torch
 import bgflow as bg
 
@@ -11,17 +10,14 @@ __all__ = ["make_distribution"]
 def make_distribution(distribution_type, shape, **kwargs):
     if distribution_type in DISTRIBUTION_FACTORIES:
         factory = DISTRIBUTION_FACTORIES[distribution_type]
-    else: # distribution_type is the factory itself
+    else:  # distribution_type is the factory itself
         factory = distribution_type
 
     return factory(shape=shape, **kwargs)
 
 
 def _make_uniform_distribution(shape, device=None, dtype=None, **kwargs):
-    defaults = {
-        "low": torch.zeros(shape),
-        "high": torch.ones(shape)
-    }
+    defaults = {"low": torch.zeros(shape), "high": torch.ones(shape)}
     defaults.update(kwargs)
     for key in defaults:
         if isinstance(defaults[key], torch.Tensor):
@@ -52,7 +48,9 @@ def _make_truncated_normal_distribution(shape, device=None, dtype=None, **kwargs
             defaults[key] = defaults[key].to(device=device, dtype=dtype)
 
         if isinstance(defaults[key], float) or isinstance(defaults[key], int):
-            defaults[key] = torch.ones(shape, device=device, dtype=dtype) * defaults[key]
+            defaults[key] = (
+                torch.ones(shape, device=device, dtype=dtype) * defaults[key]
+            )
 
     return bg.TruncatedNormalDistribution(**defaults)
 
@@ -60,6 +58,5 @@ def _make_truncated_normal_distribution(shape, device=None, dtype=None, **kwargs
 DISTRIBUTION_FACTORIES = {
     bg.UniformDistribution: _make_uniform_distribution,
     bg.NormalDistribution: _make_normal_distribution,
-    bg.TruncatedNormalDistribution: _make_truncated_normal_distribution
+    bg.TruncatedNormalDistribution: _make_truncated_normal_distribution,
 }
-

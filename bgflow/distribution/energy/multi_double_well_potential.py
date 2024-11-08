@@ -39,5 +39,5 @@ class MultiDoubleWellPotential(Energy):
         dists = compute_distances(x, self._n_particles, self._n_dimensions)
         dists = dists - self._offset
 
-        energies = self._a * dists ** 4 + self._b * dists ** 2 + self._c
+        energies = self._a * dists**4 + self._b * dists**2 + self._c
         return energies.sum(-1, keepdim=True)

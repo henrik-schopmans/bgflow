@@ -7,10 +7,16 @@ from typing import Sequence, Union
 from collections import OrderedDict, namedtuple
 
 __all__ = [
-    "TensorInfo", "ShapeDictionary",
-    "BONDS", "ANGLES", "TORSIONS", "FIXED",
-    "ORIGIN", "ROTATION", "AUGMENTED",
-    "TARGET"
+    "TensorInfo",
+    "ShapeDictionary",
+    "BONDS",
+    "ANGLES",
+    "TORSIONS",
+    "FIXED",
+    "ORIGIN",
+    "ROTATION",
+    "AUGMENTED",
+    "TARGET",
 ]
 
 
@@ -18,7 +24,7 @@ class TensorInfo(
     namedtuple(
         "TensorInfo",
         ["name", "is_circular", "is_cartesian"],
-        defaults=(False, False)
+        defaults=(False, False),
         # allow specifying bounds?
     )
 ):
@@ -31,6 +37,7 @@ class TensorInfo(
     is_circular : bool
         Whether the domain that the tensor lives on has periodic boundary conditions.
     """
+
     pass
 
 
@@ -62,10 +69,10 @@ class ShapeDictionary(OrderedDict):
 
     @staticmethod
     def from_coordinate_transform(
-            coordinate_transform,
-            dim_augmented: int = 0,
-            n_constraints: int = 0,
-            remove_origin_and_rotation: bool = True
+        coordinate_transform,
+        dim_augmented: int = 0,
+        n_constraints: int = 0,
+        remove_origin_and_rotation: bool = True,
     ):
         """Static constructor. Create shape dictionary from a coordinate transform.
 
@@ -94,12 +101,21 @@ class ShapeDictionary(OrderedDict):
             shape_info[FIXED] = (coordinate_transform.dim_fixed,)
         if dim_augmented > 0:
             shape_info[AUGMENTED] = (dim_augmented,)
-        if isinstance(coordinate_transform, GlobalInternalCoordinateTransformation) and not remove_origin_and_rotation:
+        if (
+            isinstance(coordinate_transform, GlobalInternalCoordinateTransformation)
+            and not remove_origin_and_rotation
+        ):
             shape_info[ORIGIN] = (1, 3)
             shape_info[ROTATION] = (3,)
         return shape_info
 
-    def split(self, key: TensorInfo, into: Sequence[TensorInfo], sizes: Sequence[int], dim: int = -1) -> None:
+    def split(
+        self,
+        key: TensorInfo,
+        into: Sequence[TensorInfo],
+        sizes: Sequence[int],
+        dim: int = -1,
+    ) -> None:
         """Split one key in the dictionary into multiple keys.
 
         Parameters
@@ -117,7 +133,9 @@ class ShapeDictionary(OrderedDict):
         # remove one
         index = self.index(key)
         if sum(sizes) != self[key][dim]:
-            raise ValueError(f"split sizes {sizes} do not sum up to total ({self[key]})")
+            raise ValueError(
+                f"split sizes {sizes} do not sum up to total ({self[key]})"
+            )
         all_sizes = list(self[key])
         del self[key]
         # insert multiple
@@ -127,7 +145,9 @@ class ShapeDictionary(OrderedDict):
             all_sizes[dim] = size
             self.insert(el, index, tuple(all_sizes))
 
-    def merge(self, keys: Sequence[TensorInfo], to: TensorInfo, index=None, dim: int = -1):
+    def merge(
+        self, keys: Sequence[TensorInfo], to: TensorInfo, index=None, dim: int = -1
+    ):
         """Concatenate multiple keys along a dimensions.
 
         Parameters
@@ -250,7 +270,9 @@ class ShapeDictionary(OrderedDict):
         keys = self if keys is None else keys
         return sum(self[key][dim] for key in keys)
 
-    def dim_circular(self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1):
+    def dim_circular(
+        self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1
+    ):
         """The total dimension of all circular tensors along a given axis `dim`.
 
         Parameters
@@ -268,12 +290,16 @@ class ShapeDictionary(OrderedDict):
         keys = self if keys is None else keys
         return sum(self[key][dim] for key in keys if key.is_circular)
 
-    def dim_noncircular(self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1):
+    def dim_noncircular(
+        self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1
+    ):
         """see `dim_circular`"""
         keys = self if keys is None else keys
         return sum(self[key][dim] for key in keys if not key.is_circular)
 
-    def is_circular(self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1):
+    def is_circular(
+        self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1
+    ):
         """The total dimension of all circular tensors along a given axis `dim`.
 
         Parameters
@@ -289,9 +315,13 @@ class ShapeDictionary(OrderedDict):
             A boolean array that contains `True` for each circular indices and `False` for others
         """
         keys = self if keys is None else keys
-        return np.concatenate([np.ones(self[key][dim]) * key.is_circular for key in keys]).astype(bool)
+        return np.concatenate(
+            [np.ones(self[key][dim]) * key.is_circular for key in keys]
+        ).astype(bool)
 
-    def circular_indices(self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1):
+    def circular_indices(
+        self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1
+    ):
         """Indices that are circular.
 
         Parameters
@@ -310,7 +340,9 @@ class ShapeDictionary(OrderedDict):
         keys = self if keys is None else keys
         return np.arange(self.dim_all(keys, dim))[self.is_circular(keys, dim)]
 
-    def dim_cartesian(self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1):
+    def dim_cartesian(
+        self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1
+    ):
         """The total dimension of all circular tensors along a given axis `dim`.
 
         Parameters
@@ -328,12 +360,16 @@ class ShapeDictionary(OrderedDict):
         keys = self if keys is None else keys
         return sum(self[key][dim] for key in keys if key.is_cartesian)
 
-    def dim_noncartesian(self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1):
+    def dim_noncartesian(
+        self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1
+    ):
         """see `dim_circular`"""
         keys = self if keys is None else keys
         return sum(self[key][dim] for key in keys if not key.is_cartesian)
 
-    def is_cartesian(self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1):
+    def is_cartesian(
+        self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1
+    ):
         """The total dimension of all circular tensors along a given axis `dim`.
 
         Parameters
@@ -349,9 +385,13 @@ class ShapeDictionary(OrderedDict):
             A boolean array that contains `True` for each circular indices and `False` for others
         """
         keys = self if keys is None else keys
-        return np.concatenate([np.ones(self[key][dim]) * key.is_cartesian for key in keys]).astype(bool)
+        return np.concatenate(
+            [np.ones(self[key][dim]) * key.is_cartesian for key in keys]
+        ).astype(bool)
 
-    def cartesian_indices(self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1):
+    def cartesian_indices(
+        self, keys: Union[None, Sequence[TensorInfo]] = None, dim: int = -1
+    ):
         """Indices that are circular.
 
         Parameters

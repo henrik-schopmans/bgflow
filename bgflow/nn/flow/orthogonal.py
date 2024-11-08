@@ -23,6 +23,7 @@ class PseudoOrthogonalFlow(Flow):
     penalty_parameter : float
         Scaling factor for the orthogonality constraint.
     """
+
     def __init__(self, dim, shift=True, penalty_parameter=1e5):
         super(PseudoOrthogonalFlow, self).__init__()
         self.dim = dim
@@ -85,4 +86,6 @@ class PseudoOrthogonalFlow(Flow):
         penalty : float
             Value of the penalty function
         """
-        return self.penalty_parameter * torch.sum((torch.eye(self.dim) - torch.mm(self.W.transpose(1, 0), self.W)) ** 2)
+        return self.penalty_parameter * torch.sum(
+            (torch.eye(self.dim) - torch.mm(self.W.transpose(1, 0), self.W)) ** 2
+        )

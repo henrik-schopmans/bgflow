@@ -27,7 +27,7 @@ from bgflow.nn.flow.crd_transform.ic import (
 
 TOLERANCES = {
     torch.device("cuda:0"): {torch.float32: (1e-2, 1e-3), torch.float64: (1e-6, 1e-6)},
-    torch.device("cpu"): {torch.float32: (1e-4, 1e-4), torch.float64: (1e-7, 1e-7)}
+    torch.device("cpu"): {torch.float32: (1e-4, 1e-4), torch.float64: (1e-7, 1e-7)},
 }
 
 
@@ -247,7 +247,7 @@ def test_torsion_deriv(device, dtype):
         assert torch.allclose(J, J_ref, atol=atol, rtol=rtol)
 
 
-def test_ic2xyz_deriv(device, dtype): 
+def test_ic2xyz_deriv(device, dtype):
     atol, rtol = TOLERANCES[device][dtype]
     np.random.seed(202982)
     for i in range(N_REPETITIONS):

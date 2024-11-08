@@ -67,7 +67,6 @@ Base
 
 """
 
-
 from .base import *
 from .double_well import *
 from .particles import *

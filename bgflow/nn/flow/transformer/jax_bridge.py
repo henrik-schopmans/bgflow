@@ -1,4 +1,3 @@
-
 import torch
 import torch.utils.dlpack
 
@@ -16,18 +15,18 @@ from .base import Transformer
 
 
 __all__ = [
-    'JaxTransformer',
-    'chain',
+    "JaxTransformer",
+    "chain",
 ]
 
 
 def apply_r(f, g):
     """Function application from right.
 
-       Takes a higher order function g: (A -> B) -> C
-       and applies it to the function f: A -> B.
+    Takes a higher order function g: (A -> B) -> C
+    and applies it to the function f: A -> B.
 
-       The result is the fungtion g(f): A -> C.
+    The result is the fungtion g(f): A -> C.
     """
     return lambda *args, **kwargs: g(f)(*args, **kwargs)
 
@@ -51,8 +50,7 @@ def bisect(bijector, left_bound, right_bound, eps=1e-6):
     """Bisection search."""
 
     def _inverted(target):
-        init = (jnp.ones_like(target) * left_bound,
-                jnp.ones_like(target) * right_bound)
+        init = (jnp.ones_like(target) * left_bound, jnp.ones_like(target) * right_bound)
         n_iters = jnp.ceil(-jnp.log2(eps)).astype(int)
 
         def _body(_, left_right):
@@ -70,8 +68,8 @@ def bisect(bijector, left_bound, right_bound, eps=1e-6):
 
 def invert_bijector(bijector, root_finder):
     """Inverts a bijector with a root finder
-       and computes correct gradients using
-       implicit differentation."""
+    and computes correct gradients using
+    implicit differentation."""
 
     def _bijector(x, cond):
         return bijector(x, *cond)
@@ -108,11 +106,7 @@ def invert_bijector(bijector, root_finder):
             return (outp, outp, jac)
 
         _, pullback = jax.vjp(_helper, cond)
-        cond_grad = pullback((
-            - root_grad,
-            dldj_dinp * ldj_grad,
-            - ldj_grad
-        ))[0]
+        cond_grad = pullback((-root_grad, dldj_dinp * ldj_grad, -ldj_grad))[0]
         return (outp_grad, *cond_grad)
 
     @jax.custom_vjp
@@ -126,10 +120,12 @@ def invert_bijector(bijector, root_finder):
 
 def with_ldj(bijector):
     """Wraps bijector with automatic log jacobian determinant computation."""
+
     def _call(x, *params):
         y, vjp_bijector = jax.vjp(lambda x: bijector(x, *params), x)
         ldj = jnp.log(vjp_bijector(jnp.ones_like(y))[0])
         return y, ldj
+
     return _call
 
 
@@ -138,13 +134,9 @@ def bijector_with_approx_inverse(bijector, domain=None, eps=1e-8):
     if domain is None:
         domain = (0, 1)
     root_finder = functools.partial(
-        bisect,
-        left_bound=domain[0],
-        right_bound=domain[1],
-        eps=eps)
-    invert = functools.partial(
-        invert_bijector,
-        root_finder=root_finder)
+        bisect, left_bound=domain[0], right_bound=domain[1], eps=eps
+    )
+    invert = functools.partial(invert_bijector, root_finder=root_finder)
     forward = with_ldj(bijector)
     inverse = invert(forward)
     return forward, inverse
@@ -152,9 +144,11 @@ def bijector_with_approx_inverse(bijector, domain=None, eps=1e-8):
 
 def flip(fn, permutation=(1, 0)):
     """Flips argument order of function according to permutation."""
+
     def inner(*args, **kwargs):
-        args = tuple(args[p] for p in permutation) + args[len(permutation):]
+        args = tuple(args[p] for p in permutation) + args[len(permutation) :]
         return fn(*args, **kwargs)
+
     return inner
 
 
@@ -165,7 +159,9 @@ def map_if(predicate):
                 return fn(x)
             else:
                 return x
+
         return inner
+
     return wrap
 
 
@@ -186,26 +182,39 @@ if jnp is not None:
     is_jax_ndarray = functools.partial(flip(isinstance), jnp.ndarray)
 if jax is not None and jax.dlpack is not None:
     to_torch_tensor = compose(torch.utils.dlpack.from_dlpack, jax.dlpack.to_dlpack)
-    to_jax_ndarray = compose(jax.dlpack.from_dlpack, torch.utils.dlpack.to_dlpack, assert_contiguous)
+    to_jax_ndarray = compose(
+        jax.dlpack.from_dlpack, torch.utils.dlpack.to_dlpack, assert_contiguous
+    )
 
 
 class JaxWrapper(torch.autograd.Function):
 
-        @staticmethod
-        def forward(ctx, fn, *args):
-            args = jax.tree_util.tree_map(map_if(is_torch_tensor)(to_jax_ndarray), args)
-            result, ctx.fun_vjp = jax.vjp(fn, *args)
-            result_flat, result_tree = jax.tree_util.tree_flatten(result)
-            ctx.result_tree = result_tree
-            return (*jax.tree_util.tree_map(map_if(is_jax_ndarray)(to_torch_tensor), result_flat),
-                    result_tree)
+    @staticmethod
+    def forward(ctx, fn, *args):
+        args = jax.tree_util.tree_map(map_if(is_torch_tensor)(to_jax_ndarray), args)
+        result, ctx.fun_vjp = jax.vjp(fn, *args)
+        result_flat, result_tree = jax.tree_util.tree_flatten(result)
+        ctx.result_tree = result_tree
+        return (
+            *jax.tree_util.tree_map(
+                map_if(is_jax_ndarray)(to_torch_tensor), result_flat
+            ),
+            result_tree,
+        )
 
-        @staticmethod
-        def backward(ctx, *tangents):
-            tangents = jax.tree_util.tree_map(map_if(is_torch_tensor)(to_jax_ndarray), tangents)
-            tangents = jax.jax.tree_util.tree_unflatten(ctx.result_tree, tangents[:-1])
-            grads = ctx.fun_vjp(tangents)
-            return (None, *jax.tree_util.tree_flatten(jax.tree_util.tree_map(map_if(is_jax_ndarray)(to_torch_tensor), grads))[0])
+    @staticmethod
+    def backward(ctx, *tangents):
+        tangents = jax.tree_util.tree_map(
+            map_if(is_torch_tensor)(to_jax_ndarray), tangents
+        )
+        tangents = jax.jax.tree_util.tree_unflatten(ctx.result_tree, tangents[:-1])
+        grads = ctx.fun_vjp(tangents)
+        return (
+            None,
+            *jax.tree_util.tree_flatten(
+                jax.tree_util.tree_map(map_if(is_jax_ndarray)(to_torch_tensor), grads)
+            )[0],
+        )
 
 
 def wrap_jax_fun(fn):
@@ -214,12 +223,13 @@ def wrap_jax_fun(fn):
         args_flat, args_tree = jax.tree_util.tree_flatten(args)
         *result_flat, result_tree = JaxWrapper.apply(fn, *args_flat)
         return jax.tree_util.tree_unflatten(result_tree, result_flat)
+
     return inner
 
 
 def assert_float32(x):
     if x.dtype != torch.float32:
-        raise ValueError(f'dtype {x.dtype} currently not supported by jax bridge')
+        raise ValueError(f"dtype {x.dtype} currently not supported by jax bridge")
         # if we want to support this, enable x64 globally during compile via a context mgr such as:
         # >>> from jax.config import config
         # >>> config.update("jax_enable_x64", True)
@@ -236,33 +246,35 @@ def nested_vmap(fn, indices):
 
 def jax_compile(bijector, vmap_indices, backend, domain=None, bisection_eps=1e-8):
     """Wraps simple JAX bijector into a transformer,
-       that can be used within the bgflow eco-system."""
+    that can be used within the bgflow eco-system."""
     compile_bijector = compose(functools.partial(jax.jit))
-    fwd, bwd = bijector_with_approx_inverse(nested_vmap(bijector, vmap_indices), domain, bisection_eps)
+    fwd, bwd = bijector_with_approx_inverse(
+        nested_vmap(bijector, vmap_indices), domain, bisection_eps
+    )
     return tuple(map(compile_bijector, (fwd, bwd)))
 
 
 def torch_to_jax_backend(backend):
     """Assert correct backend naming."""
-    if backend == 'cuda':
-        backend = 'gpu'
+    if backend == "cuda":
+        backend = "gpu"
     return backend
 
 
 def to_torch_impl_(bijector, vmap_indices, backend, domain=None, bisection_eps=1e-8):
     """Helper impl function that can be cashed according
-       to `vmap_indices` and `backend`"""
+    to `vmap_indices` and `backend`"""
     fwd, bwd = jax_compile(bijector, vmap_indices, backend, domain, bisection_eps)
     return tuple(map(wrap_jax_fun, (fwd, bwd)))
 
 
 def to_torch(bijector, vmap_indices=None, domain=None, bisection_eps=1e-8):
     """Converts a simple JAX bijector into a torch bijector with
-        - numerical inverses
-        - automatic computation of log det jac
+     - numerical inverses
+     - automatic computation of log det jac
 
-       `vmap_indices`: Specify axes which vmap is applied on.
-                       If set to None applies vmap over the full tensor."""
+    `vmap_indices`: Specify axes which vmap is applied on.
+                    If set to None applies vmap over the full tensor."""
     cached_compile = functools.lru_cache(functools.partial(to_torch_impl_, bijector))
 
     def _cached(x):
@@ -287,14 +299,20 @@ def to_torch(bijector, vmap_indices=None, domain=None, bisection_eps=1e-8):
 
 class JaxTransformer(Transformer):
     """Simple wrapper to make bijectors usable in coupling
-       layers of bgflow.
+    layers of bgflow.
 
-       bijector: JAX bijector
-       compute_params: function producing params for the
-                       bijector."""
+    bijector: JAX bijector
+    compute_params: function producing params for the
+                    bijector."""
 
-    def __init__(self, bijector, compute_params, reduce_jacobian=True,
-                 domain=None, bisection_eps=1e-8):
+    def __init__(
+        self,
+        bijector,
+        compute_params,
+        reduce_jacobian=True,
+        domain=None,
+        bisection_eps=1e-8,
+    ):
         super().__init__()
         self._compute_params = compute_params
         fwd, bwd = to_torch(bijector)

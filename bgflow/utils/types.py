@@ -1,11 +1,13 @@
-
 from collections.abc import Iterable
 import numpy as np
 import torch
 
 __all__ = [
-    "is_list_or_tuple", "assert_numpy", "as_numpy",
-    "unpack_tensor_tuple", "pack_tensor_in_tuple",
+    "is_list_or_tuple",
+    "assert_numpy",
+    "as_numpy",
+    "unpack_tensor_tuple",
+    "pack_tensor_in_tuple",
     "pack_tensor_in_list",
 ]
 
@@ -40,15 +42,15 @@ def unpack_tensor_tuple(seq):
         if len(seq) == 1:
             return seq[0]
         else:
-            return (*seq, )
+            return (*seq,)
 
 
 def pack_tensor_in_tuple(seq):
     """pack a tensor into a tuple of Tensor of length 1"""
     if isinstance(seq, torch.Tensor):
-        return seq,
+        return (seq,)
     elif isinstance(seq, Iterable):
-        return (*seq, )
+        return (*seq,)
     else:
         return seq
 

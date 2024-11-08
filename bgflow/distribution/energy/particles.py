@@ -19,7 +19,7 @@ def ensure_traj(X):
 
 
 def distance_matrix_squared(crd1, crd2, dim=2):
-    """ Returns the distance matrix or matrices between particles
+    """Returns the distance matrix or matrices between particles
     Parameters
     ----------
     crd1 : array or matrix
@@ -106,7 +106,7 @@ class RepulsiveParticles(Energy):
         Ycomp = ycomp.unsqueeze(1).repeat([1, n, 1])
         Dx = Xcomp - torch.transpose(Xcomp, 1, 2)
         Dy = Ycomp - torch.transpose(Ycomp, 1, 2)
-        D2 = Dx ** 2 + Dy ** 2
+        D2 = Dx**2 + Dy**2
         mmatrix = torch.Tensor.repeat(
             torch.unsqueeze(self.mask_matrix_torch.to(D2), 0), [batchsize, 1, 1]
         )
@@ -118,7 +118,7 @@ class RepulsiveParticles(Energy):
         D2rel = D2rel * mmatrix
         # energy
         E = (
-            0.5 * self.params["eps"] * torch.sum(D2rel ** 6, dim=(1, 2))
+            0.5 * self.params["eps"] * torch.sum(D2rel**6, dim=(1, 2))
         )  # do 1/2 because we have double-counted each interaction
         return E
 
@@ -132,7 +132,7 @@ class RepulsiveParticles(Energy):
         Ycomp = ycomp.unsqueeze(1).repeat([1, n, 1])
         Dx = Xcomp - torch.transpose(Xcomp, 1, 2)
         Dy = Ycomp - torch.transpose(Ycomp, 1, 2)
-        D2 = Dx ** 2 + Dy ** 2
+        D2 = Dx**2 + Dy**2
         mmatrix = torch.Tensor.repeat(
             torch.unsqueeze(self.mask_matrix_torch.to(D2), 0), [batchsize, 1, 1]
         )
@@ -155,7 +155,7 @@ class RepulsiveParticles(Energy):
         D2rel = D2rel * mmatrix * distance_mask
         # energy
         # do 1/2 because we have double-counted each interaction
-        E_LJ = 0.5 * self.params["eps"] * torch.sum(D2rel ** 6, dim=(1, 2))
+        E_LJ = 0.5 * self.params["eps"] * torch.sum(D2rel**6, dim=(1, 2))
         return E_LJ + 0.5 * torch.sum(E_h, dim=(1, 2))
 
     def LJ_force_torch(self, x):
@@ -168,7 +168,7 @@ class RepulsiveParticles(Energy):
         Ycomp = ycomp.unsqueeze(1).repeat([1, n, 1])
         Dx = Xcomp - torch.transpose(Xcomp, 1, 2)
         Dy = Ycomp - torch.transpose(Ycomp, 1, 2)
-        D2 = Dx ** 2 + Dy ** 2
+        D2 = Dx**2 + Dy**2
         mmatrix = torch.Tensor.repeat(
             torch.unsqueeze(self.mask_matrix_torch.to(D2), 0), [batchsize, 1, 1]
         )
@@ -180,10 +180,10 @@ class RepulsiveParticles(Energy):
         D2rel = D2rel * mmatrix
         # energy
         Fx = (
-            self.params["eps"] * self.rm12 * torch.sum(D2rel ** 7 * Dx, dim=(2))
+            self.params["eps"] * self.rm12 * torch.sum(D2rel**7 * Dx, dim=(2))
         )  # do 1/2 because we have double-counted each interaction
         Fy = (
-            self.params["eps"] * self.rm12 * torch.sum(D2rel ** 7 * Dy, dim=(2))
+            self.params["eps"] * self.rm12 * torch.sum(D2rel**7 * Dy, dim=(2))
         )  # do 1/2 because we have double-counted each interaction
         F = torch.cat([Fx.unsqueeze(2), Fy.unsqueeze(2)], dim=2)
         return -12 * F.reshape([batchsize, self.dim])
@@ -222,7 +222,7 @@ class RepulsiveParticles(Energy):
         r = torch.sqrt((d[:, 0]) ** 2 + (d[:, 1]) ** 2)
         dhat = d / r.unsqueeze(1)
         d1 = 2 * (r - self.params["dimer_dmid"])
-        d3 = d1 ** 3
+        d3 = d1**3
         F_dimer = (
             -2 * self.params["dimer_slope"]
             + 4 * self.params["dimer_a"] * d1
@@ -239,18 +239,18 @@ class RepulsiveParticles(Energy):
         E = 0.0
         d_left = -(xcomp + self.params["box_halfsize"])
         E += torch.sum(
-            (torch.sign(d_left) + 1) * self.params["box_k"] * d_left ** 2, dim=1
+            (torch.sign(d_left) + 1) * self.params["box_k"] * d_left**2, dim=1
         )
         d_right = xcomp - self.params["box_halfsize"]
         E += torch.sum(
-            (torch.sign(d_right) + 1) * self.params["box_k"] * d_right ** 2, dim=1
+            (torch.sign(d_right) + 1) * self.params["box_k"] * d_right**2, dim=1
         )
         d_down = -(ycomp + self.params["box_halfsize"])
         E += torch.sum(
-            (torch.sign(d_down) + 1) * self.params["box_k"] * d_down ** 2, dim=1
+            (torch.sign(d_down) + 1) * self.params["box_k"] * d_down**2, dim=1
         )
         d_up = ycomp - self.params["box_halfsize"]
-        E += torch.sum((torch.sign(d_up) + 1) * self.params["box_k"] * d_up ** 2, dim=1)
+        E += torch.sum((torch.sign(d_up) + 1) * self.params["box_k"] * d_up**2, dim=1)
         return E
 
     def box_force_torch(self, x):
@@ -294,7 +294,7 @@ class RepulsiveParticles(Energy):
         return energy_x
 
     def plot_dimer_energy(self, axis=None):
-        """ Plots the dimer energy to the standard figure """
+        """Plots the dimer energy to the standard figure"""
         x_scan = np.linspace(0.5, 2.5, 100)
         E_scan = self.dimer_energy(
             np.array([-0.5 * x_scan, np.zeros(100), 0.5 * x_scan, np.zeros(100)]).T
@@ -336,12 +336,12 @@ class RepulsiveParticles(Energy):
     def hamiltonian(self, mu):
         x = mu[:, : self.dim]
         p = mu[:, self.dim : 2 * self.dim]
-        return self.energy_torch(x) + torch.sum(p ** 2, dim=1) / 2.0
+        return self.energy_torch(x) + torch.sum(p**2, dim=1) / 2.0
 
     def surrogate_hamiltonian(self, mu):
         x = mu[:, : self.dim]
         p = mu[:, self.dim : 2 * self.dim]
-        return self.surrogate_energy_torch(x) + torch.sum(p ** 2, dim=1) / 2.0
+        return self.surrogate_energy_torch(x) + torch.sum(p**2, dim=1) / 2.0
 
 
 class HarmonicParticles(RepulsiveParticles):
@@ -361,7 +361,7 @@ class HarmonicParticles(RepulsiveParticles):
         Ycomp = ycomp.unsqueeze(1).repeat([1, n, 1])
         Dx = Xcomp - torch.transpose(Xcomp, 1, 2)
         Dy = Ycomp - torch.transpose(Ycomp, 1, 2)
-        D2 = Dx ** 2 + Dy ** 2
+        D2 = Dx**2 + Dy**2
         distance_mask = D2 < self.params["rc"] ** 2
         distance_mask = distance_mask.to(D2)
         mmatrix = torch.Tensor.repeat(

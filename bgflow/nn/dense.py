@@ -9,15 +9,15 @@ __all__ = ["DenseNet", "MeanFreeDenseNet"]
 class DenseNet(torch.nn.Module):
     def __init__(self, n_units, activation=None, weight_scale=1.0, bias_scale=0.0):
         """
-            Simple multi-layer perceptron.
+        Simple multi-layer perceptron.
 
-            Parameters:
-            -----------
-            n_units : List / Tuple of integers.
-            activation : Non-linearity or List / Tuple of non-linearities.
-                If List / Tuple then each nonlinearity will be placed after each respective hidden layer.
-                If just a single non-linearity, will be applied to all hidden layers.
-                If set to None no non-linearity will be applied.
+        Parameters:
+        -----------
+        n_units : List / Tuple of integers.
+        activation : Non-linearity or List / Tuple of non-linearities.
+            If List / Tuple then each nonlinearity will be placed after each respective hidden layer.
+            If just a single non-linearity, will be applied to all hidden layers.
+            If set to None no non-linearity will be applied.
         """
         super().__init__()
 

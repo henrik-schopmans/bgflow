@@ -1,5 +1,3 @@
-
-
 import torch
 from bgflow.nn.flow.base import Flow
 
@@ -17,6 +15,7 @@ class TriuFlow(Flow):
     shift : boolean
         Whether to use a shift parameter (+b). If False, b=0.
     """
+
     def __init__(self, dim, shift=True):
         super(TriuFlow, self).__init__()
         self.dim = dim
@@ -53,7 +52,9 @@ class TriuFlow(Flow):
             natural log of the Jacobian determinant
         """
         R = self._make_r()
-        dlogp = torch.ones_like(x[...,0,None])*torch.sum(torch.log(torch.abs(torch.diagonal(R))))
+        dlogp = torch.ones_like(x[..., 0, None]) * torch.sum(
+            torch.log(torch.abs(torch.diagonal(R)))
+        )
         y = torch.einsum("ab,...b->...a", R, x)
         return y + self.b, dlogp
 
@@ -75,10 +76,12 @@ class TriuFlow(Flow):
             natural log of the Jacobian determinant
         """
         R = self._make_r()
-        dlogp = torch.ones_like(y[...,0,None])*(-torch.sum(torch.log(torch.abs(torch.diagonal(R)))))
+        dlogp = torch.ones_like(y[..., 0, None]) * (
+            -torch.sum(torch.log(torch.abs(torch.diagonal(R))))
+        )
         try:
-            x = torch.linalg.solve_triangular(R, (y-self.b)[...,None], upper=True)
+            x = torch.linalg.solve_triangular(R, (y - self.b)[..., None], upper=True)
         except AttributeError:
             # legacy call for torch < 1.11
-            x, _ = torch.triangular_solve((y-self.b)[...,None], R)
-        return x[...,0], dlogp
+            x, _ = torch.triangular_solve((y - self.b)[..., None], R)
+        return x[..., 0], dlogp

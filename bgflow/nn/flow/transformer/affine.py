@@ -15,6 +15,7 @@ class AffineTransformer(Transformer):
     is_circular : bool
         Whether this transform is periodic on [0,1].
     """
+
     def __init__(
         self,
         shift_transformation=None,

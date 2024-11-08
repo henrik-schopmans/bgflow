@@ -1,4 +1,3 @@
-
 import torch
 import numpy as np
 
@@ -26,8 +25,11 @@ class ProductEnergy(Energy):
     -----
     The underlying components have to be single-event energies.
     """
+
     def __init__(self, components, cat_dim=None, **kwargs):
-        event_shapes, lengths = _stacked_event_shapes([c.event_shape for c in components], cat_dim)
+        event_shapes, lengths = _stacked_event_shapes(
+            [c.event_shape for c in components], cat_dim
+        )
         super().__init__(dim=event_shapes, **kwargs)
         self._components = torch.nn.ModuleList(components)
         self._cat_dim = cat_dim
@@ -64,6 +66,7 @@ class ProductSampler(Sampler):
         If None, the .sample function generates multiple tensors (one for each component).
         Otherwise, it returns one tensor that is concatenated along dimension `cat_dim`.
     """
+
     def __init__(self, components, cat_dim=None, **kwargs):
         super().__init__(**kwargs)
         self._components = torch.nn.ModuleList(components)
@@ -77,7 +80,10 @@ class ProductSampler(Sampler):
             return torch.cat(samples, dim=self._cat_dim)
 
     def _sample_with_temperature(self, n_samples, temperature=1.0):
-        samples = tuple(dist._sample_with_temperature(n_samples, temperature) for dist in self._components)
+        samples = tuple(
+            dist._sample_with_temperature(n_samples, temperature)
+            for dist in self._components
+        )
         if self._cat_dim is None:
             return samples
         else:
@@ -113,7 +119,7 @@ class ProductDistribution(CustomDistribution):
     def __init__(self, components, cat_dim=None):
         super().__init__(
             energy=ProductEnergy(components=components, cat_dim=cat_dim),
-            sampler=ProductSampler(components=components, cat_dim=cat_dim)
+            sampler=ProductSampler(components=components, cat_dim=cat_dim),
         )
 
 

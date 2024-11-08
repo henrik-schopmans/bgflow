@@ -11,6 +11,7 @@ class BentIdentity(Flow):
     """Bent identity. A nonlinear diffeomorphism with analytic gradients and inverse.
     See https://towardsdatascience.com/secret-sauce-behind-the-beauty-of-deep-learning-beginners-guide-to-activation-functions-a8e23a57d046 .
     """
+
     def __init__(self):
         super(BentIdentity, self).__init__()
 
@@ -34,7 +35,7 @@ class BentIdentity(Flow):
             Natural log of the Jacobian determinant.
         """
         dlogp = torch.log(self.derivative(x)).sum(dim=-1, keepdim=True)
-        return (torch.sqrt(x ** 2 + 1) - 1) / 2 + x, dlogp
+        return (torch.sqrt(x**2 + 1) - 1) / 2 + x, dlogp
 
     def _inverse(self, x, **kwargs):
         """Inverse transform
@@ -56,14 +57,14 @@ class BentIdentity(Flow):
             Natural log of the Jacobian determinant.
         """
         dlogp = torch.log(self.inverse_derivative(x)).sum(dim=-1, keepdim=True)
-        return 2 / 3 * (2 * x + 1 - torch.sqrt(x ** 2 + x + 1)), dlogp
+        return 2 / 3 * (2 * x + 1 - torch.sqrt(x**2 + x + 1)), dlogp
 
     @staticmethod
     def derivative(x):
         """Elementwise derivative of the activation function."""
-        return x / (2 * torch.sqrt(x ** 2 + 1)) + 1
+        return x / (2 * torch.sqrt(x**2 + 1)) + 1
 
     @staticmethod
     def inverse_derivative(x):
         """Elementwise derivative of the inverse activation function."""
-        return 4 / 3 - (2 * x + 1) / (3 * torch.sqrt(x ** 2 + x + 1))
+        return 4 / 3 - (2 * x + 1) / (3 * torch.sqrt(x**2 + x + 1))

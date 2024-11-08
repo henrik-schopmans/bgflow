@@ -4,7 +4,7 @@ import numpy as np
 
 
 def mean_finite_(x, min_finite=1):
-    """ Computes mean over finite values """
+    """Computes mean over finite values"""
     isfin = np.isfinite(x)
     if np.count_nonzero(isfin) > min_finite:
         return np.mean(x[isfin])
@@ -13,7 +13,7 @@ def mean_finite_(x, min_finite=1):
 
 
 def std_finite_(x, min_finite=2):
-    """ Computes mean over finite values """
+    """Computes mean over finite values"""
     isfin = np.isfinite(x)
     if np.count_nonzero(isfin) > min_finite:
         return np.std(x[isfin])
@@ -73,7 +73,7 @@ def bar(sampled_a_uab, sampled_b_uba):
 def free_energy_bootstrap(
     D, l, r, n, sample=100, weights=None, bias=None, temperature=1.0
 ):
-    """ Bootstrapped free energy calculation
+    """Bootstrapped free energy calculation
 
     If D is a single array, bootstraps by sample. If D is a list of arrays, bootstraps by trajectories
 
@@ -135,7 +135,7 @@ def free_energy_bootstrap(
 def free_energy_bootstrap_2BGs(
     bg1, bg2, nsamples, nbootstrap, temperature=1.0, verbose=False
 ):
-    """ Computes free energy difference between the states sampled by two Boltzmann generators
+    """Computes free energy difference between the states sampled by two Boltzmann generators
     with a joint latent space
 
     Parameters
@@ -171,9 +171,7 @@ def free_energy_bootstrap_2BGs(
         sample_x2, sampleJzx2 = bg2.transform_zxJ(sample_z)
         energies_sample_x2 = bg1.energy(sample_x2)
 
-        energies_sample_z = bg1._dim + np.sum(sample_z ** 2, axis=1) / (
-            2.0 * temperature
-        )
+        energies_sample_z = bg1._dim + np.sum(sample_z**2, axis=1) / (2.0 * temperature)
         logw1 = -energies_sample_x1 + energies_sample_z + sampleJzx1
         w1 = np.exp((logw1 - logw1.max()) / temperature)
         logw2 = -energies_sample_x2 + energies_sample_z + sampleJzx2

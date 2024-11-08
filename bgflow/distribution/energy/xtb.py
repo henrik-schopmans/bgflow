@@ -55,14 +55,15 @@ class XTBBridge(_Bridge):
     Requires the xtb-python program (installable with `conda install -c conda-forge xtb-python`).
 
     """
+
     def __init__(
-            self,
-            numbers: np.ndarray,
-            temperature: float,
-            method: str = "GFN2-xTB",
-            solvent: str = "",
-            verbosity: int = 0,
-            err_handling: str = "warning"
+        self,
+        numbers: np.ndarray,
+        temperature: float,
+        method: str = "GFN2-xTB",
+        solvent: str = "",
+        verbosity: int = 0,
+        err_handling: str = "warning",
     ):
         self.numbers = numbers
         self.temperature = temperature
@@ -79,21 +80,24 @@ class XTBBridge(_Bridge):
     @property
     def available_solvents(self):
         from xtb.utils import _solvents
+
         return list(_solvents.keys())
 
     @property
     def available_methods(self):
         from xtb.utils import _methods
+
         return list(_methods.keys())
 
     def _evaluate_single(
-            self,
-            positions: torch.Tensor,
-            evaluate_force=True,
-            evaluate_energy=True,
+        self,
+        positions: torch.Tensor,
+        evaluate_force=True,
+        evaluate_energy=True,
     ):
         from xtb.interface import Calculator, XTBException
         from xtb.utils import get_method, get_solvent
+
         positions = _nm2bohr(positions)
         energy, force = None, None
         try:
@@ -113,8 +117,7 @@ class XTBBridge(_Bridge):
                 energy = _hartree2kbt(res.get_energy(), self.temperature)
             if evaluate_force:
                 force = _hartree_per_bohr2kbt_per_nm(
-                    -res.get_gradient(),
-                    self.temperature
+                    -res.get_gradient(), self.temperature
                 )
             assert not np.isnan(energy)
             assert not np.isnan(force).any()
@@ -133,10 +136,12 @@ class XTBBridge(_Bridge):
                 force = np.zeros_like(positions)
                 energy = np.infty
         except AssertionError:
-            force[np.isnan(force)] = 0.
+            force[np.isnan(force)] = 0.0
             energy = np.infty
             if self.err_handling in ["error", "warning"]:
-                warnings.warn("Found nan in xtb force or energy. Returning infinite energy and zero force.")
+                warnings.warn(
+                    "Found nan in xtb force or energy. Returning infinite energy and zero force."
+                )
 
         return energy, force
 
@@ -153,6 +158,7 @@ class XTBEnergy(_BridgeEnergy):
         In this case, the energy call expects positions of shape (*batch_shape, n_atoms, 3).
         Otherwise, it expects positions of shape (*batch_shape, n_atoms * 3).
     """
+
     pass
 
 

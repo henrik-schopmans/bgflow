@@ -4,7 +4,7 @@ import torch
 
 from .base import Flow
 
-logger = logging.getLogger('bgflow')
+logger = logging.getLogger("bgflow")
 
 
 class SequentialFlow(Flow):
@@ -12,10 +12,10 @@ class SequentialFlow(Flow):
         """
         Represents a diffeomorphism that can be computed
         as a discrete finite stack of layers.
-        
+
         Returns the transformed variable and the log determinant
         of the Jacobian matrix.
-            
+
         Parameters
         ----------
         blocks : Tuple / List of flow blocks
@@ -27,20 +27,20 @@ class SequentialFlow(Flow):
         """
         Transforms the input along the diffeomorphism and returns
         the transformed variable together with the volume change.
-            
+
         Parameters
         ----------
         x : PyTorch Floating Tensor.
-            Input variable to be transformed. 
+            Input variable to be transformed.
             Tensor of shape `[..., n_dimensions]`.
         inverse: boolean.
             Indicates whether forward or inverse transformation shall be performed.
             If `True` computes the inverse transformation.
-        
+
         Returns
         -------
         z: PyTorch Floating Tensor.
-            Transformed variable. 
+            Transformed variable.
             Tensor of shape `[..., n_dimensions]`.
         dlogp : PyTorch Floating Tensor.
             Total volume change as a result of the transformation.

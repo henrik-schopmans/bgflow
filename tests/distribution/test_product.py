@@ -1,4 +1,3 @@
-
 import pytest
 import torch
 from bgflow import NormalDistribution, ProductDistribution
@@ -33,7 +32,9 @@ def test_multi_distribution_no_cat():
     assert samples[1].shape == (10, 2)
     assert samples[2].shape == (10, 1)
     assert compound.energy(*samples).shape == (10, 1)
-    assert n.energy(torch.cat(samples, dim=-1)).numpy() == pytest.approx(compound.energy(*samples).numpy())
+    assert n.energy(torch.cat(samples, dim=-1)).numpy() == pytest.approx(
+        compound.energy(*samples).numpy()
+    )
 
 
 def test_sample_to_cpu(ctx):
@@ -43,7 +44,9 @@ def test_sample_to_cpu(ctx):
     assert samples.shape == (150, 2)
     assert samples.device == cpu
 
-    product_distribution = ProductDistribution([NormalDistribution(2), NormalDistribution(3)], cat_dim=None)
+    product_distribution = ProductDistribution(
+        [NormalDistribution(2), NormalDistribution(3)], cat_dim=None
+    )
     samples = product_distribution.sample_to_cpu(150, batch_size=17)
     assert len(samples) == 2
     assert samples[0].shape == (150, 2)

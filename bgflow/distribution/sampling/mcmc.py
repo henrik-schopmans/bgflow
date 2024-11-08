@@ -21,8 +21,11 @@ from ._iterative_helpers import default_set_samples_hook
 
 
 __all__ = [
-    "GaussianMCMCSampler", "MCMCStep", "GaussianProposal", "LatentProposal",
-    "metropolis_accept"
+    "GaussianMCMCSampler",
+    "MCMCStep",
+    "GaussianProposal",
+    "LatentProposal",
+    "metropolis_accept",
 ]
 
 
@@ -34,6 +37,7 @@ class GaussianProposal(torch.nn.Module):
     noise_std : float, optional
         The standard deviation by which samples are perturbed.
     """
+
     def __init__(self, noise_std=0.1):
         super().__init__()
         self._noise_std = noise_std
@@ -41,7 +45,10 @@ class GaussianProposal(torch.nn.Module):
     def forward(self, state: SamplerState) -> Tuple[SamplerState, float]:
         delta_log_prob = 0.0  # symmetric density
         proposed_state = state.replace(
-            samples=tuple(x + torch.randn_like(x) * self._noise_std for x in state.as_dict()["samples"])
+            samples=tuple(
+                x + torch.randn_like(x) * self._noise_std
+                for x in state.as_dict()["samples"]
+            )
         )
         return proposed_state, delta_log_prob
 
@@ -58,11 +65,9 @@ class LatentProposal(torch.nn.Module):
     flow_kwargs : dict, optional
         Any additional keyword arguments to the flow.
     """
+
     def __init__(
-            self,
-            flow,
-            base_proposal=GaussianProposal(noise_std=0.1),
-            flow_kwargs=dict()
+        self, flow, base_proposal=GaussianProposal(noise_std=0.1), flow_kwargs=dict()
     ):
         super().__init__()
         self.flow = flow
@@ -73,8 +78,12 @@ class LatentProposal(torch.nn.Module):
         *z, logdet_inverse = self.flow.forward(
             *state.as_dict()["samples"], inverse=True, **self.flow_kwargs
         )
-        proposed_latent, delta_log_prob = self.base_proposal.forward(state.replace(samples=z))
-        *proposed_samples, logdet_forward = self.flow.forward(*proposed_latent.as_dict()["samples"])
+        proposed_latent, delta_log_prob = self.base_proposal.forward(
+            state.replace(samples=z)
+        )
+        *proposed_samples, logdet_forward = self.flow.forward(
+            *proposed_latent.as_dict()["samples"]
+        )
         # g(x|x') = g(x|z') = p_z (F_{zx}^{-1}(x)  | z') * log | det J_{zx}^{-1} (x) |
         # log g(x|x') = log p(z|z') + logabsdet J_{zx}^-1 (x)
         # log g(x'|x) = log p(z'|z) + logabsdet J_{zx}^-1 (x')
@@ -94,7 +103,14 @@ class MCMCStep(SamplerStep):
     n_steps : int
         Number of steps to take at a time.
     """
-    def __init__(self, target_energy, proposal=GaussianProposal(), target_temperatures=1.0, n_steps=1):
+
+    def __init__(
+        self,
+        target_energy,
+        proposal=GaussianProposal(),
+        target_temperatures=1.0,
+        n_steps=1,
+    ):
         super().__init__(n_steps=n_steps)
         self.target_energy = target_energy
         self.target_temperatures = target_temperatures
@@ -105,20 +121,23 @@ class MCMCStep(SamplerStep):
         state = state.evaluate_energy_force(self.target_energy, evaluate_forces=False)
         # make a proposal
         proposed_state, delta_log_prob = self.proposal.forward(state)
-        proposed_state = proposed_state.evaluate_energy_force(self.target_energy, evaluate_forces=False)
+        proposed_state = proposed_state.evaluate_energy_force(
+            self.target_energy, evaluate_forces=False
+        )
         # accept according to Metropolis criterion
         new_dict = proposed_state.as_dict()
         old_dict = state.as_dict()
         accept = metropolis_accept(
-            current_energies=old_dict["energies"]/self.target_temperatures,
-            proposed_energies=new_dict["energies"]/self.target_temperatures,
-            proposal_delta_log_prob=delta_log_prob
+            current_energies=old_dict["energies"] / self.target_temperatures,
+            proposed_energies=new_dict["energies"] / self.target_temperatures,
+            proposal_delta_log_prob=delta_log_prob,
         )
         return state.replace(
             samples=tuple(
-                torch.where(accept[..., None], new, old) for new, old in zip(new_dict["samples"], old_dict["samples"])
+                torch.where(accept[..., None], new, old)
+                for new, old in zip(new_dict["samples"], old_dict["samples"])
             ),
-            energies=torch.where(accept, new_dict["energies"], old_dict["energies"])
+            energies=torch.where(accept, new_dict["energies"], old_dict["energies"]),
         )
 
 
@@ -146,17 +165,18 @@ class GaussianMCMCSampler(IterativeSampler):
         The function is supplied as a `return_hook` to the Sampler. By default, we combine
         the batch and sample dimensions to keep consistent with the old implementation.
     """
+
     def __init__(
-            self,
-            energy,
-            init_state,
-            temperature=1.,
-            noise_std=.1,
-            stride=1,
-            n_burnin=0,
-            box_constraint=None,
-            return_hook=None,
-            **kwargs
+        self,
+        energy,
+        init_state,
+        temperature=1.0,
+        noise_std=0.1,
+        stride=1,
+        n_burnin=0,
+        box_constraint=None,
+        return_hook=None,
+        **kwargs
     ):
         # first, some things to ensure backwards compatibility
         # apply the box constraint function whenever samples are set
@@ -164,14 +184,18 @@ class GaussianMCMCSampler(IterativeSampler):
         if box_constraint is not None:
             set_samples_hook = lambda samples: [box_constraint(x) for x in samples]
         if not isinstance(init_state, SamplerState):
-            init_state = SamplerState(samples=init_state, set_samples_hook=set_samples_hook)
+            init_state = SamplerState(
+                samples=init_state, set_samples_hook=set_samples_hook
+            )
         # flatten batches before returning
         if return_hook is None:
             return_hook = lambda samples: [
                 x.reshape(-1, *shape) for x, shape in zip(samples, energy.event_shapes)
             ]
         if "n_stride" in kwargs:
-            warnings.warn("keyword n_stride is deprecated, use stride instead", DeprecationWarning)
+            warnings.warn(
+                "keyword n_stride is deprecated, use stride instead", DeprecationWarning
+            )
             stride = kwargs["n_stride"]
         # set up sampler
         super().__init__(
@@ -185,15 +209,11 @@ class GaussianMCMCSampler(IterativeSampler):
             ],
             stride=stride,
             n_burnin=n_burnin,
-            return_hook=return_hook
+            return_hook=return_hook,
         )
 
 
-def metropolis_accept(
-        current_energies,
-        proposed_energies,
-        proposal_delta_log_prob
-):
+def metropolis_accept(current_energies, proposed_energies, proposal_delta_log_prob):
     """Metropolis criterion.
 
     Parameters
@@ -224,15 +244,16 @@ def metropolis_accept(
 
 class _GaussianMCMCSampler(Energy, Sampler):
     """Deprecated legacy implementation."""
+
     def __init__(
-            self,
-            energy,
-            init_state=None,
-            temperature=1.,
-            noise_std=.1,
-            n_stride=1,
-            n_burnin=0,
-            box_constraint=None
+        self,
+        energy,
+        init_state=None,
+        temperature=1.0,
+        noise_std=0.1,
+        n_stride=1,
+        n_burnin=0,
+        box_constraint=None,
     ):
         super().__init__(energy.dim)
         warnings.warn(
@@ -242,7 +263,7 @@ Instead try using:
 >>>     init_state, [MCMCStep(energy)]
 >>> ) 
 """,
-            DeprecationWarning
+            DeprecationWarning,
         )
         self._energy_function = energy
         self._init_state = init_state
@@ -261,7 +282,7 @@ Instead try using:
         e_diff = e_prop - self._e_curr
         r = -torch.Tensor(x_prop.shape[0]).uniform_(0, 1).log().view(-1, 1)
         acc = (r > e_diff).float().view(-1, 1)
-        rej = 1. - acc
+        rej = 1.0 - acc
         self._x_curr = rej * self._x_curr + acc * x_prop
         self._e_curr = rej * self._e_curr + acc * e_prop
         if self._box_constraint is not None:
@@ -272,7 +293,9 @@ Instead try using:
 
     def _reset(self, init_state):
         self._x_curr = self._init_state
-        self._e_curr = self._energy_function.energy(self._x_curr, temperature=self._temperature)
+        self._e_curr = self._energy_function.energy(
+            self._x_curr, temperature=self._temperature
+        )
         self._xs = [self._x_curr]
         self._es = [self._e_curr]
         self._acc = [torch.zeros(init_state.shape[0]).bool()]
@@ -285,13 +308,12 @@ Instead try using:
 
     def _sample(self, n_samples):
         self._run(n_samples)
-        return torch.cat(self._xs[-n_samples::self._n_stride], dim=0)
+        return torch.cat(self._xs[-n_samples :: self._n_stride], dim=0)
 
     def _sample_accepted(self, n_samples):
         samples = self._sample(n_samples)
-        acc = torch.cat(self._acc[-n_samples::self._n_stride], dim=0)
+        acc = torch.cat(self._acc[-n_samples :: self._n_stride], dim=0)
         return samples[acc]
 
     def _energy(self, x):
         return self._energy_function.energy(x)
-

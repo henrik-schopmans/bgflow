@@ -1,4 +1,3 @@
-
 import os
 import gc
 import numpy as np
@@ -8,7 +7,11 @@ from .dataset import DataSetSampler
 from .mcmc import metropolis_accept
 
 
-__all__ = ["MetropolizedReplayBuffer", "ReplayBufferHDF5File", "ReplayBufferHDF5Reporter"]
+__all__ = [
+    "MetropolizedReplayBuffer",
+    "ReplayBufferHDF5File",
+    "ReplayBufferHDF5Reporter",
+]
 
 
 class MetropolizedReplayBuffer(DataSetSampler):
@@ -31,24 +34,26 @@ class MetropolizedReplayBuffer(DataSetSampler):
     """
 
     def __init__(
-            self,
-            *data,
-            target_energy=None,
-            proposal_energy=None,
-            energies=None,
-            temperature_scaling=1.0,
-            reporter=None,
+        self,
+        *data,
+        target_energy=None,
+        proposal_energy=None,
+        energies=None,
+        temperature_scaling=1.0,
+        reporter=None,
     ):
         if energies is None:
             if target_energy is None:
                 raise ValueError("Either target_energy or energies has to specified.")
-            energies = target_energy.energy(*data)[:,0]
+            energies = target_energy.energy(*data)[:, 0]
         else:
             n_event_dims_0 = len(data[0].shape) - len(target_energy.event_shapes[0])
             expected_energies_shape = data[0].shape[:-n_event_dims_0]
             if energies.shape != expected_energies_shape:
-                raise ValueError(f"Expected energy shape {expected_energies_shape} to be consistent "
-                                 f"with the data shape {data[0].shape} but got shape{energies.shape}.")
+                raise ValueError(
+                    f"Expected energy shape {expected_energies_shape} to be consistent "
+                    f"with the data shape {data[0].shape} but got shape{energies.shape}."
+                )
         super().__init__(*data, energies)
         self._target_energy = target_energy
         self._proposal_energy = proposal_energy
@@ -61,7 +66,9 @@ class MetropolizedReplayBuffer(DataSetSampler):
         *samples, _ = super()._sample(n_samples, *args, **kwargs)
         return unpack_tensor_tuple(samples)
 
-    def update(self, *proposals, energies=None, proposal_energies=None, forced_update=False):
+    def update(
+        self, *proposals, energies=None, proposal_energies=None, forced_update=False
+    ):
         # compute energies
         if energies is None:
             energies = self._target_energy.energy(*proposals)[:, 0]
@@ -69,13 +76,16 @@ class MetropolizedReplayBuffer(DataSetSampler):
         if proposal_energies is None:
             proposal_energies = self._proposal_energy.energy(*proposals)[:, 0]
         # select random elements from the replay buffer
-        rand_indices = torch.randperm(len(self))[:len(proposals[0])]
-        *rand_samples, rand_energies = [data[rand_indices].to(proposals[0]) for data in self.data]
+        rand_indices = torch.randperm(len(self))[: len(proposals[0])]
+        *rand_samples, rand_energies = [
+            data[rand_indices].to(proposals[0]) for data in self.data
+        ]
         # Metropolis criterion
         accepted = metropolis_accept(  # SHAPES!
             current_energies=rand_energies,
             proposed_energies=energies,
-            proposal_delta_log_prob=-proposal_energies + self._proposal_energy.energy(*rand_samples)[:, 0]
+            proposal_delta_log_prob=-proposal_energies
+            + self._proposal_energy.energy(*rand_samples)[:, 0],
             # log g(x'|x) - log g(x|x') = log g(x') - log g(x) = -u(x') + u(x)
         )
         if forced_update:
@@ -83,7 +93,9 @@ class MetropolizedReplayBuffer(DataSetSampler):
         # replace samples and energies in buffer
         n_accepted = accepted.sum().item()
         accepted_indices = rand_indices[accepted]
-        accepted_samples = [proposal[accepted].to(self.data[0]) for proposal in proposals]
+        accepted_samples = [
+            proposal[accepted].to(self.data[0]) for proposal in proposals
+        ]
         accepted_energies = [energies[accepted].to(self.data[0])]
         for i, accepted_item in enumerate(accepted_samples + accepted_energies):
             self.data[i][accepted_indices, ...] = accepted_item
@@ -94,7 +106,7 @@ class MetropolizedReplayBuffer(DataSetSampler):
                 energies=accepted_energies[0],
                 indices=accepted_indices,
                 forced_update=forced_update,
-                n_proposed=len(energies)
+                n_proposed=len(energies),
             )
         return n_accepted
 
@@ -121,6 +133,7 @@ class ReplayBufferHDF5Reporter:
     write_buffer_interval : int, optional
         After each i-th step, the whole replay buffer is written to the file.
     """
+
     def __init__(self, filename, mode=None, write_buffer_interval=100):
         if mode is None:
             mode = "r+" if os.path.isfile(filename) else "w"
@@ -147,11 +160,13 @@ class ReplayBufferHDF5Reporter:
             energies=energies,
             indices=indices,
             step=self.step,
-            forced_update=forced_update
+            forced_update=forced_update,
         )
 
     def _write_stats(self, energies, n_proposed, n_accepted):
-        self.file.write_stats(energies, step=self.step, n_proposed=n_proposed, n_accepted=n_accepted)
+        self.file.write_stats(
+            energies, step=self.step, n_proposed=n_proposed, n_accepted=n_accepted
+        )
 
     def write(self, *samples, buffer, energies, indices, forced_update, n_proposed):
         """Write one step.
@@ -171,7 +186,9 @@ class ReplayBufferHDF5Reporter:
         n_proposed : int
             Number of samples that were proposed to the buffer in this step.
         """
-        self._write_accepted_samples(*samples, energies=energies, indices=indices, forced_update=forced_update)
+        self._write_accepted_samples(
+            *samples, energies=energies, indices=indices, forced_update=forced_update
+        )
         self._write_stats(buffer.energies, n_proposed, n_accepted=len(energies))
         if self.step % self.write_buffer_interval == 0:
             self.write_buffer(*buffer.samples, energies=buffer.energies)
@@ -198,8 +215,10 @@ class ReplayBufferHDF5File:
         A dictionary of stats.
 
     """
+
     def __init__(self, filename, mode):
         import netCDF4 as nc
+
         self.filename = filename
         self.mode = mode
         self.dataset = nc.Dataset(self.filename, self.mode)
@@ -223,8 +242,12 @@ class ReplayBufferHDF5File:
         data = self.dataset.createGroup("data")
         buffer = self.dataset.createGroup("buffer")
         for i, s in enumerate(samples):
-            sample_dims = ["acceptances", ]
-            buffer_dims = ["buffer_size", ]
+            sample_dims = [
+                "acceptances",
+            ]
+            buffer_dims = [
+                "buffer_size",
+            ]
             for j, d in enumerate(s.shape[1:]):
                 name = f"sampledim_{i}_{j}"
                 self.dataset.createDimension(name, d)
@@ -241,9 +264,11 @@ class ReplayBufferHDF5File:
         buffer.createVariable("energy", "f4", ("buffer_size",))
         buffer.createVariable("step", "u8")
 
-    def _append_samples(self, *samples, energies, buffer_indices, step, forced_update, last_buffer_write):
+    def _append_samples(
+        self, *samples, energies, buffer_indices, step, forced_update, last_buffer_write
+    ):
         """Append samples to the data group."""
-        pos = slice(len(self), len(self)+len(energies))
+        pos = slice(len(self), len(self) + len(energies))
         data_group = self.dataset["data"]
         for var, sampl in zip(self._sample_fields(), samples):
             data_group[var][pos] = sampl.detach().cpu().numpy()
@@ -252,7 +277,9 @@ class ReplayBufferHDF5File:
         data_group["step"][pos] = step
         data_group["forced_update"][pos] = forced_update
         data_group["last_buffer_write"][pos] = last_buffer_write
-        data_group["running_index"][pos] = np.arange(len(self), len(self)+len(energies))
+        data_group["running_index"][pos] = np.arange(
+            len(self), len(self) + len(energies)
+        )
 
     def write_accepted_samples(self, *samples, energies, indices, step, forced_update):
         """Write samples to the HDF5 file.
@@ -339,22 +366,32 @@ class ReplayBufferHDF5File:
     @property
     def buffer(self):
         return {
-            "samples": [np.array(self.dataset["buffer"][var]) for var in self._sample_fields()],
-            "energies": np.array(self.dataset["buffer"]["energy"])
+            "samples": [
+                np.array(self.dataset["buffer"][var]) for var in self._sample_fields()
+            ],
+            "energies": np.array(self.dataset["buffer"]["energy"]),
         }
 
     @property
     def stats(self):
-        return {stat: np.array(self.dataset["stats"][stat][:]) for stat in self.dataset["stats"].variables}
+        return {
+            stat: np.array(self.dataset["stats"][stat][:])
+            for stat in self.dataset["stats"].variables
+        }
 
     @property
     def is_header_written(self):
-        return "buffer" in self.dataset.groups and "energy" in self.dataset["buffer"].variables
+        return (
+            "buffer" in self.dataset.groups
+            and "energy" in self.dataset["buffer"].variables
+        )
 
     def __getitem__(self, indices):
         data_group = self.dataset["data"]
         result_dict = {
-            "samples": [np.array(data_group[var][indices]) for var in self._sample_fields()]
+            "samples": [
+                np.array(data_group[var][indices]) for var in self._sample_fields()
+            ]
         }
         for var in data_group.variables:
             if not "sample" in var:
@@ -363,12 +400,10 @@ class ReplayBufferHDF5File:
 
     def as_mdtraj_trajectory(self, topology, indices=slice(None)):
         import mdtraj as md
+
         assert len(list(self._sample_fields())) == 1
         data = self[indices]
-        return md.Trajectory(
-            xyz=data["samples"][0],
-            topology=topology
-        )
+        return md.Trajectory(xyz=data["samples"][0], topology=topology)
 
     def __len__(self):
         return self.dataset.dimensions["acceptances"].size
@@ -389,6 +424,7 @@ class ReplayBufferHDF5File:
     def close_all_h5():
         """Close all netCDF4 datasets in the global scope."""
         import netCDF4 as nc
+
         for obj in gc.get_objects():  # Browse through ALL objects
             if isinstance(obj, nc.Dataset):  # Just HDF5 files
                 try:

@@ -7,7 +7,14 @@ import torch
 from .base import Flow
 from .inverted import InverseFlow
 
-__all__ = ["SplitFlow", "MergeFlow", "SwapFlow", "CouplingFlow", "WrapFlow", "SetConstantFlow"]
+__all__ = [
+    "SplitFlow",
+    "MergeFlow",
+    "SwapFlow",
+    "CouplingFlow",
+    "WrapFlow",
+    "SetConstantFlow",
+]
 
 
 class SplitFlow(Flow):
@@ -33,9 +40,12 @@ class SplitFlow(Flow):
     than the sum of all sizes, the last size will be inferred from the input
     dimensions.
     """
+
     def __init__(self, *sizes_or_indices, dim=-1):
         super().__init__()
-        if isinstance(sizes_or_indices[0], Sequence) or isinstance(sizes_or_indices[0], np.ndarray):
+        if isinstance(sizes_or_indices[0], Sequence) or isinstance(
+            sizes_or_indices[0], np.ndarray
+        ):
             self._sizes = None
             self._indices = sizes_or_indices
         else:
@@ -68,7 +78,9 @@ class SplitFlow(Flow):
         elif last_size > 0:
             sizes = [*self._sizes, last_size]
         else:
-            raise ValueError(f"can't split x [{x.shape}] into sizes {self._sizes} along {self._split_dim}")
+            raise ValueError(
+                f"can't split x [{x.shape}] into sizes {self._sizes} along {self._split_dim}"
+            )
         return torch.split(x, sizes, dim=self._split_dim)
 
     def _split_with_indices(self, x):
@@ -80,7 +92,9 @@ class SplitFlow(Flow):
             result.append(x[self._range(indices, len(x.shape))])
             is_done[indices] = True
         if not is_done.all():
-            raise ValueError(f"Split with indices missed indices {torch.arange(len(is_done))[is_done]}")
+            raise ValueError(
+                f"Split with indices missed indices {torch.arange(len(is_done))[is_done]}"
+            )
         return result
 
     def _range(self, indices, n_dimensions):
@@ -100,21 +114,23 @@ class SplitFlow(Flow):
             y[self._range(indices, len(x.shape))] = x
             is_done[indices] = True
         if not is_done.all():
-            raise ValueError(f"Merge with indices missed indices {torch.arange(len(is_done))[is_done]}")
+            raise ValueError(
+                f"Merge with indices missed indices {torch.arange(len(is_done))[is_done]}"
+            )
         return y
 
 
 class MergeFlow(InverseFlow):
     def __init__(self, *sizes, dim=-1):
-        """ Shortcut to InverseFlow(SplitFlow()) """
+        """Shortcut to InverseFlow(SplitFlow())"""
         super().__init__(SplitFlow(*sizes, dim=dim))
 
 
 class SwapFlow(Flow):
     def __init__(self):
-        """ Swaps two input channels """
+        """Swaps two input channels"""
         super().__init__()
-        
+
     def _forward(self, *xs, **kwargs):
         dlogp = torch.zeros(*xs[0].shape[:-1], 1).to(xs[0])
         if len(xs) == 1:
@@ -149,14 +165,19 @@ class CouplingFlow(Flow):
     ValueError
         If transformer and conditioner indices are not disjointed.
     """
-    def __init__(self, transformer, transformed_indices=(1,), cond_indices=(0,), cat_dim=-1):
+
+    def __init__(
+        self, transformer, transformed_indices=(1,), cond_indices=(0,), cat_dim=-1
+    ):
         super().__init__()
         self.transformer = transformer
         self.transformed_indices = transformed_indices
         self.cond_indices = cond_indices
         invalid = np.intersect1d(self.transformed_indices, self.cond_indices)
         if len(invalid) > 0:
-            raise ValueError(f"Indices {invalid} cannot be both transformed and conditioned on.")
+            raise ValueError(
+                f"Indices {invalid} cannot be both transformed and conditioned on."
+            )
         self.cat_dim = cat_dim
 
     def _forward(self, *x, **kwargs):
@@ -195,6 +216,7 @@ class WrapFlow(Flow):
         The outputs of the `flow` are assigned to those outputs of the wrapped flow.
         By default, the out indices are the same as the indices.
     """
+
     def __init__(self, flow, indices, out_indices=None):
         super().__init__()
         self._flow = flow
@@ -220,8 +242,6 @@ class WrapFlow(Flow):
             index = self._indices[i]
             output.insert(index, yi[i])
         return (*tuple(output), dlogp)
-
-
 
 
 class SetConstantFlow(Flow):
@@ -257,7 +277,7 @@ class SetConstantFlow(Flow):
 
     def _forward(self, *xs, **kwargs):
         """insert constants"""
-        batch_shape = list(xs[0].shape[:self.n_event_dims0])
+        batch_shape = list(xs[0].shape[: self.n_event_dims0])
         y = list(xs)
         for i, v in zip(self.indices, self.values):
             y.insert(i, v.repeat([*batch_shape, *np.ones_like(v.shape)]))
@@ -267,7 +287,6 @@ class SetConstantFlow(Flow):
     def _inverse(self, *xs, **kwargs):
         """remove constants"""
         y = tuple(xs[i] for i, z in enumerate(xs) if i not in self.indices)
-        batch_shape = list(y[0].shape[:self.n_event_dims0])
+        batch_shape = list(y[0].shape[: self.n_event_dims0])
         dlogp = torch.zeros(batch_shape + [1], device=y[0].device, dtype=y[0].dtype)
         return (*y, dlogp)
-

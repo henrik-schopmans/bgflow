@@ -16,6 +16,7 @@ class LinLogCutEnergy(Energy):
     max_energy : float
         Upper bound for energies returned by this object.
     """
+
     def __init__(self, energy, high_energy=1e3, max_energy=1e9):
         super().__init__(energy.event_shapes)
         self.delegate = energy
@@ -29,6 +30,7 @@ class LinLogCutEnergy(Energy):
 
 class GradientClippedEnergy(Energy):
     """An Energy with clipped gradients. See `ClipGradient` for details."""
+
     def __init__(self, energy: Energy, gradient_clipping: ClipGradient):
         super().__init__(energy.event_shapes)
         self.delegate = energy

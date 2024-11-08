@@ -35,7 +35,7 @@ class LossReporter:
     def losses(self, n_smooth=1):
         x = np.arange(n_smooth, len(self._raw[0]) + 1)
         ys = []
-        for (label, raw) in zip(self._labels, self._raw):
+        for label, raw in zip(self._labels, self._raw):
             raw = assert_numpy(raw).reshape(-1)
             kernel = np.ones(shape=(n_smooth,)) / n_smooth
             ys.append(np.convolve(raw, kernel, mode="valid"))
@@ -47,7 +47,13 @@ class LossReporter:
 
 class KLTrainer(object):
     def __init__(
-        self, bg, optim=None, train_likelihood=True, train_energy=True, custom_loss=None, test_likelihood=False,
+        self,
+        bg,
+        optim=None,
+        train_likelihood=True,
+        train_energy=True,
+        custom_loss=None,
+        test_likelihood=False,
     ):
         """Trainer for minimizing the forward or reverse
 
@@ -76,7 +82,7 @@ class KLTrainer(object):
         if train_likelihood:
             loss_names.append("NLL")
             self.w_likelihood = 1.0
-        if test_likelihood: 
+        if test_likelihood:
             loss_names.append("NLL(Test)")
         self.reporter = LossReporter(*loss_names)
         self.custom_loss = custom_loss
@@ -95,7 +101,7 @@ class KLTrainer(object):
         temperature=1.0,
         schedulers=(),
         clip_forces=None,
-        progress_bar=lambda x:x
+        progress_bar=lambda x: x,
     ):
         """
         Train the network.
@@ -137,7 +143,7 @@ class KLTrainer(object):
             warnings.warn(
                 "clip_forces is deprecated and will be ignored. "
                 "Use GradientClippedEnergy instances instead",
-                DeprecationWarning
+                DeprecationWarning,
             )
 
         if isinstance(data, torch.Tensor):
@@ -173,8 +179,8 @@ class KLTrainer(object):
                 if w_likelihood > 0:
                     l = w_likelihood / (w_likelihood + w_energy)
                     (l * nll).backward(retain_graph=True)
-                
-            # compute NLL over test data 
+
+            # compute NLL over test data
             if self.test_likelihood:
                 testnll = torch.zeros_like(nll)
                 if testdata is not None:
@@ -182,7 +188,9 @@ class KLTrainer(object):
                     if isinstance(testbatch, torch.Tensor):
                         testbatch = (testbatch,)
                     with torch.no_grad():
-                        testnll = self.bg.energy(*testbatch, temperature=temperature).mean()
+                        testnll = self.bg.energy(
+                            *testbatch, temperature=temperature
+                        ).mean()
                 reports.append(testnll)
 
             if w_custom is not None:
@@ -194,12 +202,15 @@ class KLTrainer(object):
             if n_print > 0:
                 if iter % n_print == 0:
                     self.reporter.print(*reports)
-            
-            if any(torch.any(torch.isnan(p.grad)) for p in self.bg.parameters() if p.grad is not None):
+
+            if any(
+                torch.any(torch.isnan(p.grad))
+                for p in self.bg.parameters()
+                if p.grad is not None
+            ):
                 print("found nan in grad; skipping optimization step")
             else:
                 self.optim.step()
-
 
     def losses(self, n_smooth=1):
         return self.reporter.losses(n_smooth=n_smooth)

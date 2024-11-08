@@ -22,7 +22,15 @@ from ..distribution.normal import NormalDistribution
 from ..distribution.product import ProductDistribution, ProductEnergy
 from ..bg import BoltzmannGenerator
 from .tensor_info import (
-    TensorInfo, BONDS, ANGLES, TORSIONS, FIXED, ORIGIN, ROTATION, AUGMENTED, TARGET
+    TensorInfo,
+    BONDS,
+    ANGLES,
+    TORSIONS,
+    FIXED,
+    ORIGIN,
+    ROTATION,
+    AUGMENTED,
+    TARGET,
 )
 from .conditioner_factory import make_conditioners
 from .transformer_factory import make_transformer
@@ -32,19 +40,22 @@ from .icmarginals import InternalCoordinateMarginals
 __all__ = ["BoltzmannGeneratorBuilder"]
 
 
-logger = logging.getLogger('bgflow')
+logger = logging.getLogger("bgflow")
 
 
 def _tuple(thing):
     """Turn something into a tuple; everything but tuple and list is turned into a one-element tuple
     containing that thing.
     """
-    if isinstance(thing, tuple) and not hasattr(thing, "_fields"):  # exclude namedtuples
+    if isinstance(thing, tuple) and not hasattr(
+        thing, "_fields"
+    ):  # exclude namedtuples
         return thing
     elif isinstance(thing, list):
         return tuple(thing)
     else:
-        return thing,
+        return (thing,)
+
 
 class BoltzmannGeneratorBuilder:
     """Builder class for Boltzmann Generators.
@@ -105,7 +116,16 @@ class BoltzmannGeneratorBuilder:
     >>>  samples = generator.sample(11)
 
     """
-    def __init__(self, prior_dims, prior_type=None, prior_kwargs=None, target=None, device=None, dtype=None):
+
+    def __init__(
+        self,
+        prior_dims,
+        prior_type=None,
+        prior_kwargs=None,
+        target=None,
+        device=None,
+        dtype=None,
+    ):
         self.default_transformer_type = ConditionalSplineTransformer
         self.default_conditioner_type = "dense"
         self.default_transformer_kwargs = dict()
@@ -139,9 +159,13 @@ class BoltzmannGeneratorBuilder:
             self.targets[TARGET] = target
         if AUGMENTED in self.prior_dims:
             dim = self.prior_dims[AUGMENTED]
-            self.targets[AUGMENTED] = NormalDistribution(dim, torch.zeros(dim, **self.ctx))
+            self.targets[AUGMENTED] = NormalDistribution(
+                dim, torch.zeros(dim, **self.ctx)
+            )
         self.param_groups = dict()
-        dimstring = "; ".join(f"{field.name}: {self.prior_dims[field]}"  for field in prior_dims)
+        dimstring = "; ".join(
+            f"{field.name}: {self.prior_dims[field]}" for field in prior_dims
+        )
         logger.info(f"BG Builder  :::  ({dimstring})")
 
     def build_generator(self, zero_parameters=False, check_target=True):
@@ -162,7 +186,7 @@ class BoltzmannGeneratorBuilder:
         generator = BoltzmannGenerator(
             prior=self.build_prior(),
             flow=self.build_flow(zero_parameters=zero_parameters),
-            target=self.build_target(check_target=check_target)
+            target=self.build_target(check_target=check_target),
         )
         self.clear()
         return generator
@@ -182,7 +206,10 @@ class BoltzmannGeneratorBuilder:
         """
         flow = SequentialFlow(self.layers)
         if zero_parameters:
-            warnings.warn("Initializing the flow with zeros makes it much less flexible", UserWarning)
+            warnings.warn(
+                "Initializing the flow with zeros makes it much less flexible",
+                UserWarning,
+            )
             for p in flow.parameters():
                 p.data.zero_()
         return flow
@@ -203,7 +230,7 @@ class BoltzmannGeneratorBuilder:
                 distribution_type=prior_type,
                 shape=self.prior_dims[field],
                 **self.ctx,
-                **prior_kwargs
+                **prior_kwargs,
             )
             priors.append(prior)
         if len(priors) > 1:
@@ -253,7 +280,7 @@ class BoltzmannGeneratorBuilder:
         conditioner_type=None,
         transformer_type=None,
         transformer_kwargs=dict(),
-        **conditioner_kwargs
+        **conditioner_kwargs,
     ):
         """Add a coupling layer, i.e. a transformation of the tensor(s) `what`
         that is conditioned on the tensor(s) `on`. If the channels in `what` and `on`
@@ -289,41 +316,75 @@ class BoltzmannGeneratorBuilder:
         ##### Get transformer and conditioner types and kwargs #####
 
         if transformer_type is None:
-            transformer_types = [self.transformer_type.get(el, self.default_transformer_type) for el in what]
+            transformer_types = [
+                self.transformer_type.get(el, self.default_transformer_type)
+                for el in what
+            ]
             if not all(ttype == transformer_types[0] for ttype in transformer_types):
-                raise ValueError("Fields with different transformer_type cannot be transformed together.")
+                raise ValueError(
+                    "Fields with different transformer_type cannot be transformed together."
+                )
             transformer_type = transformer_types[0]
 
-        transformer_kwargss = [self.transformer_kwargs.get(el, self.default_transformer_kwargs) for el in what]
-        transformer_kwargss = [{**defaults, **transformer_kwargs} for defaults in transformer_kwargss]
-        if not all(tkwargs == transformer_kwargss[0] for tkwargs in transformer_kwargss):
-            raise ValueError("Fields with different transformer_kwargs cannot be transformed together.")
+        transformer_kwargss = [
+            self.transformer_kwargs.get(el, self.default_transformer_kwargs)
+            for el in what
+        ]
+        transformer_kwargss = [
+            {**defaults, **transformer_kwargs} for defaults in transformer_kwargss
+        ]
+        if not all(
+            tkwargs == transformer_kwargss[0] for tkwargs in transformer_kwargss
+        ):
+            raise ValueError(
+                "Fields with different transformer_kwargs cannot be transformed together."
+            )
         transformer_kwargs = transformer_kwargss[0]
 
         if conditioner_type is None:
-            conditioner_types = [self.conditioner_type.get(el, self.default_conditioner_type) for el in what]
+            conditioner_types = [
+                self.conditioner_type.get(el, self.default_conditioner_type)
+                for el in what
+            ]
             if not all(ttype == conditioner_types[0] for ttype in conditioner_types):
-                raise ValueError("Fields with different conditioner_type cannot be transformed together.")
+                raise ValueError(
+                    "Fields with different conditioner_type cannot be transformed together."
+                )
             conditioner_type = conditioner_types[0]
 
-        conditioner_kwargss = [self.conditioner_kwargs.get(el, self.default_conditioner_kwargs) for el in what]
-        conditioner_kwargss = [{**defaults, **conditioner_kwargs} for defaults in conditioner_kwargss]
-        if not all(ckwargs == conditioner_kwargss[0] for ckwargs in conditioner_kwargss):
-            raise ValueError("Fields with different conditioner_kwargs cannot be transformed together.")
+        conditioner_kwargss = [
+            self.conditioner_kwargs.get(el, self.default_conditioner_kwargs)
+            for el in what
+        ]
+        conditioner_kwargss = [
+            {**defaults, **conditioner_kwargs} for defaults in conditioner_kwargss
+        ]
+        if not all(
+            ckwargs == conditioner_kwargss[0] for ckwargs in conditioner_kwargss
+        ):
+            raise ValueError(
+                "Fields with different conditioner_kwargs cannot be transformed together."
+            )
         conditioner_kwargs = conditioner_kwargss[0]
 
         ##### Split overlapping fields into two channels #####
-        
+
         overlapping_what_indices = [i for i, w in enumerate(what) if w in on]
-        to_be_merged = [] # list of tuples (split1, split2, original) to remember what to merge later
+        to_be_merged = (
+            []
+        )  # list of tuples (split1, split2, original) to remember what to merge later
         for i in overlapping_what_indices:
             # Add a split layer that splits the overlapping fields randomly into two channels
             split1 = what[i]._replace(name=what[i].name + "_split1")
             split2 = what[i]._replace(name=what[i].name + "_split2")
 
             len_split1 = self.current_dims[what[i]][0] // 2
-            split1_indices = np.random.choice(self.current_dims[what[i]][0], len_split1, replace=False)
-            split2_indices = np.setdiff1d(np.arange(self.current_dims[what[i]][0]), split1_indices)
+            split1_indices = np.random.choice(
+                self.current_dims[what[i]][0], len_split1, replace=False
+            )
+            split2_indices = np.setdiff1d(
+                np.arange(self.current_dims[what[i]][0]), split1_indices
+            )
 
             assert len(split1_indices) > 0
             assert len(split2_indices) > 0
@@ -336,12 +397,12 @@ class BoltzmannGeneratorBuilder:
             what[i] = split1
 
         ##### Add the coupling layer #####
-            
+
         couplings_to_add = [(what, on)]
         if add_reverse:
             couplings_to_add.append((on, what))
 
-        for what, on in couplings_to_add: 
+        for what, on in couplings_to_add:
             conditioners = make_conditioners(
                 transformer_type=transformer_type,
                 conditioner_type=conditioner_type,
@@ -349,19 +410,19 @@ class BoltzmannGeneratorBuilder:
                 what=what,
                 on=on,
                 shape_info=self.current_dims.copy(),
-                **conditioner_kwargs
+                **conditioner_kwargs,
             )
             transformer = make_transformer(
                 transformer_type=transformer_type,
                 what=what,
                 shape_info=self.current_dims,
                 conditioners=conditioners,
-                **transformer_kwargs
+                **transformer_kwargs,
             )
             coupling = CouplingFlow(
                 transformer=transformer,
                 transformed_indices=[self.current_dims.index(f) for f in what],
-                cond_indices=[self.current_dims.index(f) for f in on]
+                cond_indices=[self.current_dims.index(f) for f in on],
             ).to(**self.ctx)
             logger.info(
                 f"  + Coupling Layer: "
@@ -378,20 +439,20 @@ class BoltzmannGeneratorBuilder:
     def add_set_constant(self, what, tensor):
         if what in self.current_dims:
             if self.current_dims[what] != tuple(tensor.shape):
-                raise ValueError(f"Constant tensor {tensor} must have shape {self.current_dims[what]}")
+                raise ValueError(
+                    f"Constant tensor {tensor} must have shape {self.current_dims[what]}"
+                )
         else:
             if what in self.prior_dims:
-                raise ValueError(f"Cannot set {what} constant; field was already deleted or replaced.")
+                raise ValueError(
+                    f"Cannot set {what} constant; field was already deleted or replaced."
+                )
             else:
                 self.current_dims[what] = tuple(tensor.shape)
         index = self.current_dims.index(what)
-        fix_flow = SetConstantFlow(
-            indices=[index],
-            values=[tensor.to(**self.ctx)]
-        )
+        fix_flow = SetConstantFlow(indices=[index], values=[tensor.to(**self.ctx)])
         logger.info(f"  + Set Constant: {what} at index {index}")
         self.layers.append(fix_flow)
-    
 
     def add_layer(self, flow, what=None, inverse=False, param_groups=tuple()):
         """Add a flow layer.
@@ -422,7 +483,6 @@ class BoltzmannGeneratorBuilder:
         self._add_to_param_groups(flow.parameters(), param_groups)
         self.layers.append(flow)
 
-
     def add_split(self, what, into, sizes_or_indices, dim=-1):
         into = list(into)
         for i, el in enumerate(into):
@@ -436,8 +496,12 @@ class BoltzmannGeneratorBuilder:
             sizes = sizes_or_indices
         self.current_dims.split(what, into, sizes, dim=dim)
         output_indices = [self.current_dims.index(el) for el in into]
-        wrap_flow = WrapFlow(split_flow, indices=(input_index,), out_indices=output_indices)
-        logger.info(f"  + Split: {what.name} -> ({', '.join([field.name for field in into])})")
+        wrap_flow = WrapFlow(
+            split_flow, indices=(input_index,), out_indices=output_indices
+        )
+        logger.info(
+            f"  + Split: {what.name} -> ({', '.join([field.name for field in into])})"
+        )
         self.layers.append(wrap_flow)
         return tuple(into)
 
@@ -455,22 +519,26 @@ class BoltzmannGeneratorBuilder:
         merge_flow = MergeFlow(*sizes_or_indices, dim=dim)
         self.current_dims.merge(what, to=to, index=output_index)
         output_index = self.current_dims.index(to)
-        wrap_flow = WrapFlow(merge_flow, indices=input_indices, out_indices=(output_index,))
-        logger.info(f"  + Merge: ({', '.join([field.name for field in what])}) -> {[to.name]}")
+        wrap_flow = WrapFlow(
+            merge_flow, indices=input_indices, out_indices=(output_index,)
+        )
+        logger.info(
+            f"  + Merge: ({', '.join([field.name for field in what])}) -> {[to.name]}"
+        )
         self.layers.append(wrap_flow)
         return to
 
     def add_map_to_cartesian(
-            self,
-            coordinate_transform,
-            fixed_origin_and_rotation=True,
-            bonds=BONDS,
-            angles=ANGLES,
-            torsions=TORSIONS,
-            fixed=FIXED,
-            origin=ORIGIN,
-            rotation=ROTATION,
-            out=TARGET
+        self,
+        coordinate_transform,
+        fixed_origin_and_rotation=True,
+        bonds=BONDS,
+        angles=ANGLES,
+        torsions=TORSIONS,
+        fixed=FIXED,
+        origin=ORIGIN,
+        rotation=ROTATION,
+        out=TARGET,
     ):
         ic_fields = [bonds, angles, torsions]
 
@@ -479,7 +547,9 @@ class BoltzmannGeneratorBuilder:
             ic_fields.extend([origin, rotation])
             if fixed_origin_and_rotation:
                 self.add_set_constant(origin, torch.zeros(1, 3, **self.ctx))
-                self.add_set_constant(rotation, torch.tensor([0.5, 0.5, 0.5], **self.ctx))
+                self.add_set_constant(
+                    rotation, torch.tensor([0.5, 0.5, 0.5], **self.ctx)
+                )
         else:
             ic_fields.append(fixed)
 
@@ -487,13 +557,10 @@ class BoltzmannGeneratorBuilder:
         wrap_around_ics = WrapFlow(
             InverseFlow(coordinate_transform),
             indices=indices,
-            out_indices=(min(indices),) # first index of the input
+            out_indices=(min(indices),),  # first index of the input
         )
         self.current_dims.merge(ic_fields, out)
         self.layers.append(wrap_around_ics)
-
-
-
 
     def add_map_to_ic_domains(self, cdfs=dict(), return_layers=False):
         if len(cdfs) == 0:
@@ -514,10 +581,7 @@ class BoltzmannGeneratorBuilder:
             return new_layers
 
     def add_merge_constraints(
-            self,
-            constrained_indices,
-            constrained_values,
-            field=BONDS
+        self, constrained_indices, constrained_values, field=BONDS
     ):
         """Augment a tensor by constants elements.
 
@@ -536,7 +600,7 @@ class BoltzmannGeneratorBuilder:
             warnings.warn(
                 "add_merge_constraints was skipped, "
                 "because no bond indices were specified.",
-                UserWarning
+                UserWarning,
             )
             return
         n_bonds = len(constrained_indices) + self.current_dims[field][-1]
@@ -549,10 +613,12 @@ class BoltzmannGeneratorBuilder:
         self.add_merge(
             (field, field_constrained),
             to=field,
-            sizes_or_indices=(unconstrained_indices, constrained_indices)
+            sizes_or_indices=(unconstrained_indices, constrained_indices),
         )
 
-    def add_constrain_chirality(self, halpha_torsion_indices, right_handed=False, torsions=TORSIONS):
+    def add_constrain_chirality(
+        self, halpha_torsion_indices, right_handed=False, torsions=TORSIONS
+    ):
         """Constrain the chirality of aminoacids
          by constraining their normalized halpha torsions to [0.5,1] instead of [0,1].
 
@@ -567,18 +633,20 @@ class BoltzmannGeneratorBuilder:
         scale = torch.ones(*self.current_dims[TORSIONS], **self.ctx)
         loc[halpha_torsion_indices] = 0.5 * (1 - right_handed)
         scale[halpha_torsion_indices] = 0.5
-        affine = TorchTransform(torch.distributions.AffineTransform(loc=loc, scale=scale), 1)
-        return self.add_layer(affine, what=(torsions, ))
+        affine = TorchTransform(
+            torch.distributions.AffineTransform(loc=loc, scale=scale), 1
+        )
+        return self.add_layer(affine, what=(torsions,))
 
     def add_torsion_multiplicities(self, multiplicities, torsions=TORSIONS):
         """TODO:docs"""
         fmod_layer = IncreaseMultiplicityFlow(multiplicities).to(**self.ctx)
-        return self.add_layer(fmod_layer, what=(torsions, ))
+        return self.add_layer(fmod_layer, what=(torsions,))
 
     def add_torsion_shifts(self, shifts, torsions=TORSIONS):
         """TODO:docs"""
         fmod_layer = CircularShiftFlow(shifts).to(**self.ctx)
-        return self.add_layer(fmod_layer, what=(torsions, ))
+        return self.add_layer(fmod_layer, what=(torsions,))
 
     def _add_to_param_groups(self, parameters, param_groups):
         parameters = list(parameters)
@@ -588,5 +656,3 @@ class BoltzmannGeneratorBuilder:
             self.param_groups[group].extend(parameters)
             # remove duplicate parameters if parameters are shared between layers:
             # self.param_groups[group] = list(set(self.param_groups[group]))
-
-

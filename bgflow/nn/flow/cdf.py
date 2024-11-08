@@ -1,4 +1,3 @@
-
 import torch
 import numpy as np
 from .base import Flow
@@ -21,6 +20,7 @@ class CDFTransform(Flow):
     eps : float
         Limit to ensure that cdf values are strictly in (0,1). Log deterimants are enforced > -1/eps.
     """
+
     def __init__(self, distribution, eps=1e-7):
         super().__init__()
         self.distribution = distribution
@@ -29,20 +29,20 @@ class CDFTransform(Flow):
     def _forward(self, x, *args, **kwargs):
         y = self.distribution.cdf(x)
         if self._eps is not None:
-            y = y.clamp(self._eps, 1. - self._eps)
+            y = y.clamp(self._eps, 1.0 - self._eps)
         logdet = self.distribution.log_prob(x)
         if self._eps is not None:
-            logdet = logdet.clamp_min(-1/self._eps)
+            logdet = logdet.clamp_min(-1 / self._eps)
 
         return y, logdet.sum(dim=-1, keepdim=True)
 
     def _inverse(self, x, *args, **kwargs):
         if self._eps is not None:
-            x = x.clamp(self._eps, 1. - self._eps)
+            x = x.clamp(self._eps, 1.0 - self._eps)
         y = self.distribution.icdf(x)
         logdet = -self.distribution.log_prob(y)
         if self._eps is not None:
-            logdet = logdet.clamp_min(-1/self._eps)
+            logdet = logdet.clamp_min(-1 / self._eps)
         return y, logdet.sum(dim=-1, keepdim=True)
 
 
@@ -56,11 +56,14 @@ class DistributionTransferFlow(SequentialFlow):
     target_distribution : torch.distributions.Distribution
         Distribution of output data.
     """
+
     def __init__(self, source_distribution, target_distribution, eps=1e-7):
-        super().__init__([
-            CDFTransform(source_distribution, eps=eps),
-            InverseFlow(CDFTransform(target_distribution, eps=eps))
-        ])
+        super().__init__(
+            [
+                CDFTransform(source_distribution, eps=eps),
+                InverseFlow(CDFTransform(target_distribution, eps=eps)),
+            ]
+        )
 
 
 class ConstrainGaussianFlow(Flow):
@@ -86,6 +89,7 @@ class ConstrainGaussianFlow(Flow):
     eps : float
         If not None, clamp all CDF values to [0+eps, 1-eps] and clamp log_prob values > -1/eps.
     """
+
     def __init__(
         self,
         mu,
@@ -95,7 +99,7 @@ class ConstrainGaussianFlow(Flow):
         assert_range=True,
         mu_out=None,
         sigma_out=None,
-        eps=1e-7
+        eps=1e-7,
     ):
         super().__init__()
         source = torch.distributions.Normal(mu, sigma.to(mu))
@@ -104,9 +108,9 @@ class ConstrainGaussianFlow(Flow):
         target = TruncatedNormalDistribution(
             mu=mu if mu_out is None else mu_out.to(mu),
             sigma=sigma if sigma_out is None else sigma_out.to(mu),
-            lower_bound=lower_bound*torch.ones_like(mu),
-            upper_bound=upper_bound*torch.ones_like(mu),
-            assert_range=assert_range
+            lower_bound=lower_bound * torch.ones_like(mu),
+            upper_bound=upper_bound * torch.ones_like(mu),
+            assert_range=assert_range,
         )
         self._trafo = DistributionTransferFlow(source, target, eps)
         self._lower_bound = lower_bound

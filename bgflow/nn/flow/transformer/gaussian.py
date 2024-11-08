@@ -2,7 +2,7 @@ import torch
 
 from .affine import AffineTransformer
 
-__all__ =  ["TruncatedGaussianTransformer"]
+__all__ = ["TruncatedGaussianTransformer"]
 
 
 class TruncatedGaussianTransformer(AffineTransformer):
@@ -23,6 +23,7 @@ class TruncatedGaussianTransformer(AffineTransformer):
     upper_bound_out : Union[torch.Tensor, np.ndarray, float]
         upper bound of the output
     """
+
     def __init__(
         self,
         mu_transformation=None,
@@ -45,12 +46,13 @@ class TruncatedGaussianTransformer(AffineTransformer):
         """Returns cdf and log_prob"""
         ctx = {"device": mu.device, "dtype": mu.dtype}
         standard_normal = torch.distributions.normal.Normal(
-            torch.tensor(0.0, **ctx),
-            torch.tensor(1.0, **ctx)
+            torch.tensor(0.0, **ctx), torch.tensor(1.0, **ctx)
         )  # this is a lightweight class; its construction should not affect performance too much
         alpha = (self._lower_bound_in - mu) / sigma
         beta = (self._upper_bound_in - mu) / sigma
-        cdf_lower, cdf_upper = standard_normal.cdf(alpha.detach()), standard_normal.cdf(beta.detach())
+        cdf_lower, cdf_upper = standard_normal.cdf(alpha.detach()), standard_normal.cdf(
+            beta.detach()
+        )
         z = cdf_upper - cdf_lower
         if inverse:
             y = standard_normal.icdf(z * y + cdf_lower) * sigma + mu
@@ -64,7 +66,7 @@ class TruncatedGaussianTransformer(AffineTransformer):
     def _scale(self, y, lower, upper, inverse=False):
         if inverse:
             y = (y - lower) / (upper - lower)
-            dlogp = - torch.log(upper - lower)
+            dlogp = -torch.log(upper - lower)
         else:
             y = lower + y * (upper - lower)
             dlogp = torch.log(upper - lower)
@@ -86,7 +88,9 @@ class TruncatedGaussianTransformer(AffineTransformer):
         sigma = torch.exp(log_sigma)
         y, dlogp = self._truncated_normal_cdf_log_prob(y, mu, sigma, inverse=False)
         # y is in [0,1]
-        y, dlogp_scale = self._scale(y, lower=self._lower_bound_out, upper=self._upper_bound_out)
+        y, dlogp_scale = self._scale(
+            y, lower=self._lower_bound_out, upper=self._upper_bound_out
+        )
         y = self._assert_range(y, self._lower_bound_out, self._upper_bound_out)
         return y, (dlogp + dlogp_scale).sum(dim=-1, keepdim=True)
 
@@ -96,7 +100,9 @@ class TruncatedGaussianTransformer(AffineTransformer):
         assert mu.shape[-1] == y.shape[-1]
         assert log_sigma.shape[-1] == y.shape[-1]
         sigma = torch.exp(log_sigma)
-        y, dlogp_scale = self._scale(y, lower=self._lower_bound_out, upper=self._upper_bound_out, inverse=True)
+        y, dlogp_scale = self._scale(
+            y, lower=self._lower_bound_out, upper=self._upper_bound_out, inverse=True
+        )
         # y is in [0,1]
         y, dlogp = self._truncated_normal_cdf_log_prob(y, mu, sigma, inverse=True)
         y = self._assert_range(y, self._lower_bound_in, self._upper_bound_in)

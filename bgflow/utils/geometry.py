@@ -93,7 +93,7 @@ def distance_vectors_v2(x, y, remove_diagonal=True):
 def distances_from_vectors(r, eps=1e-6):
     """
     Computes the all-distance matrix from given distance vectors.
-    
+
     Parameters
     ----------
     r : torch.Tensor
@@ -101,7 +101,7 @@ def distances_from_vectors(r, eps=1e-6):
         Tensor of shape `[n_batch, n_particles, n_other_particles, n_dimensions]`
     eps : Small real number.
         Regularizer to avoid division by zero.
-    
+
     Returns
     -------
     d : torch.Tensor
@@ -134,7 +134,9 @@ def compute_distances(x, n_particles, n_dimensions, remove_duplicates=True):
     x = x.reshape(-1, n_particles, n_dimensions)
     distances = torch.cdist(x, x)
     if remove_duplicates:
-        distances = distances[:, torch.triu(torch.ones((n_particles, n_particles)), diagonal=1) == 1]
+        distances = distances[
+            :, torch.triu(torch.ones((n_particles, n_particles)), diagonal=1) == 1
+        ]
         distances = distances.reshape(-1, n_particles * (n_particles - 1) // 2)
     return distances
 

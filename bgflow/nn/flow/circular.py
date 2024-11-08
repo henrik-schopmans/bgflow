@@ -8,11 +8,11 @@ from .base import Flow
 
 
 def _relu_3_ramp(x):
-    """ Relu(x) ** 3 ramp function
-        returns
+    """Relu(x) ** 3 ramp function
+    returns
 
-            f(x)     = relu(x) ** 3
-            df/dx(x) = relu(x) ** 2
+        f(x)     = relu(x) ** 3
+        df/dx(x) = relu(x) ** 2
     """
     rx = torch.relu(x)
     ramp = rx.pow(3)
@@ -21,7 +21,7 @@ def _relu_3_ramp(x):
 
 
 def _bump_fn(x, alpha=1.0, with_pdf=False):
-    """ computes bump function (pdf) together with cdf """
+    """computes bump function (pdf) together with cdf"""
     # TODO: speed up numerics
 
     # compute ramps + grads
@@ -41,7 +41,7 @@ def _bump_fn(x, alpha=1.0, with_pdf=False):
 
 
 def _bump_fn_distr(x, mu, sigma, alpha=1.0, with_pdf=False):
-    """ wraps bump function distribution around circle and returns pdf, cdf """
+    """wraps bump function distribution around circle and returns pdf, cdf"""
 
     # TODO: maybe more efficient way?
     u = x - mu
@@ -71,16 +71,16 @@ def _bump_fn_distr(x, mu, sigma, alpha=1.0, with_pdf=False):
 
 def _cdf_transform(x, mu, sigma, weight, eps, alpha=1.0):
     """
-        transforms x according to a cdf defined by a mixture
-        of circular bump function distributions
+    transforms x according to a cdf defined by a mixture
+    of circular bump function distributions
 
-        Arguments:
+    Arguments:
 
-            x:       [n_batch, dim]
-            mu:      [n_batch, n_basis, dim]
-            sigma:   [n_batch, n_basis, dim]
-            weight:  [n_batch, n_basis, dim]
-            eps:     [n_batch, dim]
+        x:       [n_batch, dim]
+        mu:      [n_batch, n_basis, dim]
+        sigma:   [n_batch, n_basis, dim]
+        weight:  [n_batch, n_basis, dim]
+        eps:     [n_batch, dim]
     """
     # [n_batch, 1, dim]
     x = x.unsqueeze(1)
@@ -101,7 +101,7 @@ def _cdf_transform(x, mu, sigma, weight, eps, alpha=1.0):
 
 
 def _bisect(y, f, lb=0.0, ub=1.0, max_it=100, eps=1e-6):
-    """ inverts a cdf f evaluated at y using bisection method
+    """inverts a cdf f evaluated at y using bisection method
 
     lb: lower bound
     ub: upper bound

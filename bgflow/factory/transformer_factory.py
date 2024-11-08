@@ -8,7 +8,9 @@ from ..nn.flow.transformer.spline import ConditionalSplineTransformer
 __all__ = ["make_transformer"]
 
 
-def make_transformer(transformer_type, what, shape_info, conditioners, inverse=False, **kwargs):
+def make_transformer(
+    transformer_type, what, shape_info, conditioners, inverse=False, **kwargs
+):
     """Factory function.
 
     Parameters
@@ -23,7 +25,9 @@ def make_transformer(transformer_type, what, shape_info, conditioners, inverse=F
     else:
         spline_disable_identity_transform = False
 
-    transformer = factory(what=what, shape_info=shape_info, conditioners=conditioners, **kwargs)
+    transformer = factory(
+        what=what, shape_info=shape_info, conditioners=conditioners, **kwargs
+    )
 
     if spline_disable_identity_transform:
         transformer._default_settings["enable_identity_init"] = False
@@ -35,9 +39,7 @@ def make_transformer(transformer_type, what, shape_info, conditioners, inverse=F
 
 def _make_spline_transformer(what, shape_info, conditioners, **kwargs):
     return ConditionalSplineTransformer(
-        is_circular=shape_info.is_circular(what),
-        **conditioners,
-        **kwargs
+        is_circular=shape_info.is_circular(what), **conditioners, **kwargs
     )
 
 
@@ -48,10 +50,9 @@ def _make_affine_transformer(what, shape_info, conditioners, **kwargs):
             "not supported for partly circular indices."
         )
     return AffineTransformer(
-        **conditioners,
-        is_circular=shape_info.dim_circular(what) > 0,
-        **kwargs
+        **conditioners, is_circular=shape_info.dim_circular(what) > 0, **kwargs
     )
+
 
 # def _make_sigmoid_transformer(
 #         what,
@@ -96,4 +97,3 @@ TRANSFORMER_FACTORIES = {
     AffineTransformer: _make_affine_transformer,
     # MixtureCDFTransformer: _make_sigmoid_transformer
 }
-

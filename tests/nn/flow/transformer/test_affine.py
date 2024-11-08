@@ -1,4 +1,3 @@
-
 import pytest
 import torch
 from bgflow import AffineTransformer, DenseNet
@@ -23,14 +22,14 @@ def test_affine(is_circular, use_scale_transform):
             trafo = AffineTransformer(
                 shift_transformation=ShiftModule(),
                 scale_transformation=scale,
-                is_circular=is_circular
+                is_circular=is_circular,
             )
 
     else:
         trafo = AffineTransformer(
             shift_transformation=ShiftModule(),
             scale_transformation=scale,
-            is_circular=is_circular
+            is_circular=is_circular,
         )
         x = torch.rand(100, 2)
         y = torch.rand(100, 2)
@@ -40,4 +39,3 @@ def test_affine(is_circular, use_scale_transform):
             assert (y2 < 1).all()
         else:
             assert (y2 > 1).any()
-

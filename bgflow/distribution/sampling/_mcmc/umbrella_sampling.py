@@ -5,7 +5,7 @@ import numpy as np
 
 class UmbrellaModel(object):
     def __init__(self, energy_function, rc_function, k_umbrella, m_umbrella):
-        """ Umbrella Energy Model
+        """Umbrella Energy Model
 
         Parameters
         ----------
@@ -62,7 +62,7 @@ class UmbrellaSampling(object):
         m_max,
         forward_backward=True,
     ):
-        """ Umbrella Sampling
+        """Umbrella Sampling
 
         Parameters
         ----------
@@ -90,8 +90,7 @@ class UmbrellaSampling(object):
 
     @classmethod
     def load(cls, filename):
-        """ Loads parameters into model. The resulting model is just a data container.
-        """
+        """Loads parameters into model. The resulting model is just a data container."""
         from deep_boltzmann.util import load_obj
 
         D = load_obj(filename)
@@ -180,7 +179,7 @@ class UmbrellaSampling(object):
         return np.array(free_energies)
 
     def mbar(self, rc_min=None, rc_max=None, rc_bins=50):
-        """ Estimates free energy along reaction coordinate with binless WHAM / MBAR.
+        """Estimates free energy along reaction coordinate with binless WHAM / MBAR.
 
         Parameters
         ----------

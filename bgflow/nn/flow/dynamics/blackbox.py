@@ -6,7 +6,9 @@ class BlackBoxDynamics(torch.nn.Module):
     The divergence of the dynamics is computed with a divergence estimator.
     """
 
-    def __init__(self, dynamics_function, divergence_estimator, compute_divergence=True):
+    def __init__(
+        self, dynamics_function, divergence_estimator, compute_divergence=True
+    ):
         super().__init__()
         self._dynamics_function = dynamics_function
         self._divergence_estimator = divergence_estimator

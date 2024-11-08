@@ -16,19 +16,17 @@ class SimpleDynamics(torch.nn.Module):
         super().__init__()
 
     def forward(self, xs):
-        dxs = - 1 * xs
+        dxs = -1 * xs
         return dxs
 
 
 def make_black_box_flow():
     black_box_dynamics = BlackBoxDynamics(
         dynamics_function=TimeIndependentDynamics(SimpleDynamics()),
-        divergence_estimator=BruteForceEstimator()
+        divergence_estimator=BruteForceEstimator(),
     )
 
-    flow = DiffEqFlow(
-        dynamics=black_box_dynamics
-    )
+    flow = DiffEqFlow(dynamics=black_box_dynamics)
     return flow
 
 
@@ -59,10 +57,7 @@ def test_nODE_flow_DTO():
     flow = make_black_box_flow()
 
     flow._use_checkpoints = True
-    options = {
-        "Nt": 20,
-        "method": "RK4"
-    }
+    options = {"Nt": 20, "method": "RK4"}
     flow._kwargs = options
 
     try:

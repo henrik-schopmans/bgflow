@@ -1,8 +1,13 @@
 import torch
 import pytest
 import numpy as np
-from bgflow.distribution import NormalDistribution, TruncatedNormalDistribution, MeanFreeNormalDistribution
+from bgflow.distribution import (
+    NormalDistribution,
+    TruncatedNormalDistribution,
+    MeanFreeNormalDistribution,
+)
 from bgflow.utils import as_numpy
+
 
 @pytest.mark.parametrize("dim", [2])
 @pytest.mark.parametrize("n_samples", [10000])
@@ -17,7 +22,9 @@ def test_normal_distribution(device, dtype, dim, n_samples, temperature):
     samples = normal_distribution.sample(n_samples, temperature=temperature)
     tol = 0.2 * np.sqrt(temperature)
     assert samples.shape == torch.Size([n_samples, dim])
-    assert samples.mean(dim=0).cpu().numpy() == pytest.approx(np.ones(dim), abs=tol, rel=0)
+    assert samples.mean(dim=0).cpu().numpy() == pytest.approx(
+        np.ones(dim), abs=tol, rel=0
+    )
     assert np.cov(samples.cpu().numpy(), rowvar=False) == pytest.approx(
         cov.cpu().numpy() * temperature, abs=tol, rel=0
     )
@@ -47,17 +54,26 @@ def test_energy(device, dtype):
 @pytest.mark.parametrize("assert_range", [True, False])
 @pytest.mark.parametrize("sampling_method", ["icdf", "rejection"])
 @pytest.mark.parametrize("is_learnable", [True, False])
-def test_truncated_normal_distribution_tensors(device, dtype, assert_range, sampling_method, is_learnable):
+def test_truncated_normal_distribution_tensors(
+    device, dtype, assert_range, sampling_method, is_learnable
+):
     """Test with tensor parameters."""
     dim = 5
     tn = TruncatedNormalDistribution(
         mu=1 + torch.rand(dim, device=device, dtype=dtype),
-        sigma=torch.rand(dim,),
-        lower_bound=torch.rand(dim,),
-        upper_bound=4 * torch.ones(dim,),
+        sigma=torch.rand(
+            dim,
+        ),
+        lower_bound=torch.rand(
+            dim,
+        ),
+        upper_bound=4
+        * torch.ones(
+            dim,
+        ),
         assert_range=assert_range,
         sampling_method=sampling_method,
-        is_learnable=is_learnable
+        is_learnable=is_learnable,
     ).to(device, dtype)
     if is_learnable:
         assert len(list(tn.parameters())) > 0
@@ -85,7 +101,9 @@ def test_truncated_normal_distribution_tensors(device, dtype, assert_range, samp
 
 @pytest.mark.parametrize("two_event_dims", [True, False])
 def test_mean_free_normal_distribution(two_event_dims, device):
-    mean_free_normal_distribution = MeanFreeNormalDistribution(dim=8, n_particles=4, two_event_dims=two_event_dims)
+    mean_free_normal_distribution = MeanFreeNormalDistribution(
+        dim=8, n_particles=4, two_event_dims=two_event_dims
+    )
     mean_free_normal_distribution.to(device)
     n_samples = 10000
     threshold = 1e-5
@@ -112,7 +130,9 @@ def test_sample_energy_multi_temperature(ctx):
 
     assert samples.shape == torch.Size([n_samples, dim])
     assert samples.mean().item() == pytest.approx(1.0, abs=5e-2, rel=0)
-    assert as_numpy(samples.var(dim=1)) == pytest.approx(as_numpy(temperature.flatten()), abs=0.2, rel=0)
+    assert as_numpy(samples.var(dim=1)) == pytest.approx(
+        as_numpy(temperature.flatten()), abs=0.2, rel=0
+    )
 
     x = torch.randn(1, 1000, **ctx).expand(3, 1000)
     energy = normal_distribution.energy(x, temperature=temperature)
@@ -131,9 +151,11 @@ def test_normalization_1d(ctx, sigma, temperature):
         normal_1 = NormalDistribution(dim=1).to(**ctx)
     else:
         normal_1 = NormalDistribution(dim=1, cov=torch.tensor([[sigma**2]])).to(**ctx)
-    normal_t = NormalDistribution(dim=1, cov=torch.tensor([[temperature*sigma**2]])).to(**ctx)
+    normal_t = NormalDistribution(
+        dim=1, cov=torch.tensor([[temperature * sigma**2]])
+    ).to(**ctx)
     nbins = 10000
-    xmax = 3*sigma*np.sqrt(temperature)
+    xmax = 3 * sigma * np.sqrt(temperature)
     x = torch.linspace(-xmax, xmax, nbins, **ctx)[..., None]
     dx = 2 * xmax / nbins
     u1 = as_numpy(normal_1.energy(x))
@@ -141,13 +163,15 @@ def test_normalization_1d(ctx, sigma, temperature):
     ut = as_numpy(normal_t.energy(x))
     atol = 1e-4 if ctx["dtype"] is torch.float32 else 1e-5
     # check that the u_T = u_1 / T + const
-    assert(u1 / temperature - ut).std() == pytest.approx(0.0, abs=atol)
+    assert (u1 / temperature - ut).std() == pytest.approx(0.0, abs=atol)
     assert ut == pytest.approx(ut1, abs=atol)
     # check that the integral(e^-u) = 1
-    assert (np.exp(-ut1) * dx).sum() == pytest.approx(1., abs=1e-2)
+    assert (np.exp(-ut1) * dx).sum() == pytest.approx(1.0, abs=1e-2)
 
 
-@pytest.mark.parametrize("temperature", [1.0, 0.5, 2.0, 31.41, torch.tensor([[1.0], [2.0]])])
+@pytest.mark.parametrize(
+    "temperature", [1.0, 0.5, 2.0, 31.41, torch.tensor([[1.0], [2.0]])]
+)
 def test_normalization_2d(ctx, temperature):
     """check the normalization constant at different temperatures"""
     if isinstance(temperature, torch.Tensor):
@@ -159,10 +183,12 @@ def test_normalization_2d(ctx, temperature):
     normal_distribution = NormalDistribution(dim, mean=mean, cov=cov)
     samples = normal_distribution.sample(n_samples, temperature=temperature)
 
-    tt = torch.as_tensor(temperature)[..., None] if isinstance(temperature, torch.Tensor) else temperature
-    ref = torch.distributions.MultivariateNormal(
-        loc=mean, covariance_matrix=tt*cov
+    tt = (
+        torch.as_tensor(temperature)[..., None]
+        if isinstance(temperature, torch.Tensor)
+        else temperature
     )
+    ref = torch.distributions.MultivariateNormal(loc=mean, covariance_matrix=tt * cov)
     logp = as_numpy(ref.log_prob(samples))[..., None]
     u = as_numpy(normal_distribution.energy(samples, temperature=temperature))
     atol = 4e-3 if ctx["dtype"] == torch.float32 else 1e-5

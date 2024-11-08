@@ -40,8 +40,10 @@ def _randint(high):
 
 
 def _assert_in_unit_interval(x):
-    if (x > 1 + 1e-6).any() or (x < - 1e-6).any():
-        raise ValueError(f'IncreaseMultiplicityFlow operates on [0,1] but input was {x}')
+    if (x > 1 + 1e-6).any() or (x < -1e-6).any():
+        raise ValueError(
+            f"IncreaseMultiplicityFlow operates on [0,1] but input was {x}"
+        )
 
 
 class CircularShiftFlow(Flow):
@@ -60,13 +62,13 @@ class CircularShiftFlow(Flow):
         self.register_buffer("_shift", torch.as_tensor(shift))
 
     def _forward(self, x, **kwargs):
-        #_assert_in_unit_interval(x)
+        # _assert_in_unit_interval(x)
         y = (x + self._shift) % 1
         dlogp = torch.zeros_like(x[..., [0]])
         return y, dlogp
 
     def _inverse(self, x, **kwargs):
-        #_assert_in_unit_interval(x)
+        # _assert_in_unit_interval(x)
         y = (x - self._shift) % 1
         dlogp = torch.zeros_like(x[..., [0]])
         return y, dlogp

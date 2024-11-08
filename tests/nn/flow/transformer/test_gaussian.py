@@ -1,4 +1,3 @@
-
 import torch
 from bgflow.nn.flow.transformer.gaussian import TruncatedGaussianTransformer
 from bgflow.distribution.normal import TruncatedNormalDistribution
@@ -10,7 +9,9 @@ def test_constrained_affine_transformer(ctx):
     sigma_net = torch.nn.Linear(3, 2, bias=False)
     mu_net.weight.data = torch.ones_like(mu_net.weight.data)
     sigma_net.weight.data = torch.ones_like(sigma_net.weight.data)
-    constrained = TruncatedGaussianTransformer(mu_net, sigma_net, -5.0, 5.0, -8.0, 0.0).to(**ctx)
+    constrained = TruncatedGaussianTransformer(
+        mu_net, sigma_net, -5.0, 5.0, -8.0, 0.0
+    ).to(**ctx)
 
     # test if forward and inverse are compatible
     x = torch.ones(1, 3, **ctx)
@@ -26,12 +27,18 @@ def test_constrained_affine_transformer(ctx):
 
     # test if the log det agrees with the log prob of a truncated normal distribution
     mu = torch.einsum("ij,...j->...i", mu_net.weight.data, x)
-    _, logsigma = constrained._get_mu_and_log_sigma(x, y)  # not reiterating the tanh stuff
+    _, logsigma = constrained._get_mu_and_log_sigma(
+        x, y
+    )  # not reiterating the tanh stuff
     sigma = torch.exp(logsigma)
-    trunc_gaussian = TruncatedNormalDistribution(mu, sigma, torch.tensor(-5, **ctx), torch.tensor(5, **ctx))
+    trunc_gaussian = TruncatedNormalDistribution(
+        mu, sigma, torch.tensor(-5, **ctx), torch.tensor(5, **ctx)
+    )
     log_prob = trunc_gaussian.log_prob(y)
-    log_scale = torch.log(torch.tensor(8., **ctx))
-    assert torch.allclose(dlogp, (log_prob + log_scale).sum(dim=-1, keepdim=True), atol=tol)
+    log_scale = torch.log(torch.tensor(8.0, **ctx))
+    assert torch.allclose(
+        dlogp, (log_prob + log_scale).sum(dim=-1, keepdim=True), atol=tol
+    )
 
     # try backward pass and assert reasonable gradients
     y2.sum().backward(create_graph=True)

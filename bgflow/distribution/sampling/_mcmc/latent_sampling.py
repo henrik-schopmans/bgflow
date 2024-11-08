@@ -27,9 +27,7 @@ def plot_latent_sampling(rc, Z, E, rclabel="Reaction coord.", maxener=100):
     )
     ax5 = plt.subplot2grid((3, 4), (2, 0), colspan=3)
     ax6 = plt.subplot2grid((3, 4), (2, 3))
-    plot_traj_hist(
-        np.mean(Z ** 2, axis=1), ax1=ax5, ax2=ax6, color="blue", ylabel="|Z|"
-    )
+    plot_traj_hist(np.mean(Z**2, axis=1), ax1=ax5, ax2=ax6, color="blue", ylabel="|Z|")
 
 
 def sample_RC(
@@ -42,7 +40,7 @@ def sample_RC(
     xmapper=None,
     failfast=True,
 ):
-    """ Generates x samples from latent network and computes their weights
+    """Generates x samples from latent network and computes their weights
 
     Parameters
     ----------
@@ -132,7 +130,7 @@ class GaussianPriorMCMC(object):
         tf=False,
         temperature=1.0,
     ):
-        """ Latent Prior Markov-Chain Monte Carlo
+        """Latent Prior Markov-Chain Monte Carlo
 
         Samples from a Gaussian prior in latent space and accepts according to energy in configuration space.
 
@@ -224,15 +222,14 @@ class GaussianPriorMCMC(object):
         for i in range(1, n):
             if self.std_z.size == 1:
                 log_p_forward = -factor[0] * np.sum(sample_z[i] ** 2)
-                log_p_backward = -factor[0] * np.sum(self.z ** 2)
+                log_p_backward = -factor[0] * np.sum(self.z**2)
             else:
                 log_p_forward = logsumexp(
                     -factor * np.sum(sample_z[i] ** 2)
                     - self.network.zdim * np.log(self.std_z)
                 )
                 log_p_backward = logsumexp(
-                    -factor * np.sum(self.z ** 2)
-                    - self.network.zdim * np.log(self.std_z)
+                    -factor * np.sum(self.z**2) - self.network.zdim * np.log(self.std_z)
                 )
                 # use sequential stepping
                 # log_p_forward = - factor[sample_s[i]] * np.sum(sample_z[i]**2)
@@ -256,7 +253,7 @@ class GaussianPriorMCMC(object):
         return sample_s[sel], sample_z[sel], sample_x[sel], sample_e[sel], sample_J[sel]
 
     def run(self, N, return_proposal=False):
-        """ Generates N samples
+        """Generates N samples
 
         Returns
         -------
@@ -337,7 +334,7 @@ def eval_GaussianPriorMCMC(
         )
         _, _, _, _ = gp_mcmc.run(burnin, return_proposal=False)
         Z, X, E, J = gp_mcmc.run(nsteps, return_proposal=False)
-        z2s.append(np.sum(Z ** 2, axis=1))
+        z2s.append(np.sum(Z**2, axis=1))
         ms.append(metric(X))
         Es.append(E)
         Js.append(J)
@@ -357,7 +354,7 @@ class LatentMetropolisGauss(object):
         nwalkers=1,
         xmapper=None,
     ):
-        """ Metropolis Monte-Carlo Simulation with Gaussian Proposal Steps
+        """Metropolis Monte-Carlo Simulation with Gaussian Proposal Steps
 
         Parameters
         ----------
@@ -434,19 +431,19 @@ class LatentMetropolisGauss(object):
 
     @property
     def trajs(self):
-        """ Returns a list of trajectories, one trajectory for each walker """
+        """Returns a list of trajectories, one trajectory for each walker"""
         T = np.array(self.traj_).astype(np.float32)
         return [T[:, i, :] for i in range(T.shape[1])]
 
     @property
     def ztrajs(self):
-        """ Returns a list of trajectories, one trajectory for each walker """
+        """Returns a list of trajectories, one trajectory for each walker"""
         Z = np.array(self.ztraj_).astype(np.float32)
         return [Z[:, i, :] for i in range(Z.shape[1])]
 
     @property
     def etrajs(self):
-        """ Returns a list of energy trajectories, one trajectory for each walker """
+        """Returns a list of energy trajectories, one trajectory for each walker"""
         E = np.array(self.etraj_)
         return [E[:, i] for i in range(E.shape[1])]
 
@@ -474,7 +471,7 @@ def sample_hybrid_zprior_zmetro(
     mapper=None,
     verbose=0,
 ):
-    """ Samples iteratively using Prior MCMC in z-space and Metropolis MCMC in z-space
+    """Samples iteratively using Prior MCMC in z-space and Metropolis MCMC in z-space
 
     Parameters
     ----------
@@ -558,7 +555,7 @@ def sample_hybrid_zprior_xmetro(
     mapper=None,
     verbose=0,
 ):
-    """ Samples iteratively using Prior MCMC in z-space and Metropolis MCMC in z-space
+    """Samples iteratively using Prior MCMC in z-space and Metropolis MCMC in z-space
 
     Parameters
     ----------

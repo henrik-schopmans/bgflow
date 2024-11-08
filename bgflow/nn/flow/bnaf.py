@@ -7,21 +7,26 @@ from ...utils.tensorops import log_dot_exp
 
 
 def _diag_mask(d: int, a: int, b: int):
-    """ Computes the diagonal mask for a BNAF
+    """Computes the diagonal mask for a BNAF
 
-        Arguments:
-            d:  data dimension
-            a:  input block factor
-            b:  output block factor
+    Arguments:
+        d:  data dimension
+        a:  input block factor
+        b:  output block factor
 
-        Returns:
-            m:  the binary mask
-                np.array of shape [d * a, d * b]
+    Returns:
+        m:  the binary mask
+            np.array of shape [d * a, d * b]
     """
     assert d >= 1
     assert a >= 1
     assert b >= 1
-    m = np.zeros((a * d, b * d,)).astype(bool)
+    m = np.zeros(
+        (
+            a * d,
+            b * d,
+        )
+    ).astype(bool)
     # TODO vectorize `for` loop
     for i in range(d):
         m[a * i : a * (i + 1), b * i : b * (i + 1)] = True
@@ -29,21 +34,26 @@ def _diag_mask(d: int, a: int, b: int):
 
 
 def _off_diag_mask(d: int, a: int, b: int):
-    """ Computes the off diagonal mask for a BNAF
+    """Computes the off diagonal mask for a BNAF
 
-        Arguments:
-            d:  data dimension
-            a:  input block factor
-            b:  output block factor
+    Arguments:
+        d:  data dimension
+        a:  input block factor
+        b:  output block factor
 
-        Returns:
-            m:  the binary mask
-                np.array of shape [d * a, d * b]
+    Returns:
+        m:  the binary mask
+            np.array of shape [d * a, d * b]
     """
     assert d >= 1
     assert a >= 1
     assert b >= 1
-    m = np.zeros((a * d, b * d,)).astype(bool)
+    m = np.zeros(
+        (
+            a * d,
+            b * d,
+        )
+    ).astype(bool)
 
     # TODO vectorize `for` loop
     for i in range(a * d):
@@ -56,18 +66,18 @@ def _off_diag_mask(d: int, a: int, b: int):
 
 
 def _leaky_relu_gate(x: torch.Tensor, a, b, inverse=False):
-    """ Invertible point-wise nonlinearity implemented by leaky relu
+    """Invertible point-wise nonlinearity implemented by leaky relu
 
-        Arguments:
-            x: input tensor
-            a: positive scaling factor (0 < a)
-            b: negative scaling factor (0 < b)
+    Arguments:
+        x: input tensor
+        a: positive scaling factor (0 < a)
+        b: negative scaling factor (0 < b)
 
-        Returns:
-            y:      transformed data
-                    torch.Tensor
-            dlogp:  log of diagonal jacobian
-                    torch.Tensor
+    Returns:
+        y:      transformed data
+                torch.Tensor
+        dlogp:  log of diagonal jacobian
+                torch.Tensor
     """
     cond = x >= 0
     if not inverse:
@@ -81,18 +91,18 @@ def _leaky_relu_gate(x: torch.Tensor, a, b, inverse=False):
 
 
 def _tanh_gate(x: torch.Tensor, alpha, beta, inverse=False):
-    """ Invertible point-wise nonlinearity implemented by mixture of linear and tanh
+    """Invertible point-wise nonlinearity implemented by mixture of linear and tanh
 
-        Arguments:
-            x:      input tensor
-            alpha:  bandwidth factor for tanh (0 < alpha)
-            beta:   mixing coefficient interpolating between linear and tanh (0 < beta < 1)
+    Arguments:
+        x:      input tensor
+        alpha:  bandwidth factor for tanh (0 < alpha)
+        beta:   mixing coefficient interpolating between linear and tanh (0 < beta < 1)
 
-        Returns:
-            y:      transformed data
-                    torch.Tensor
-            dlogp:  log of diagonal jacobian
-                    torch.Tensor
+    Returns:
+        y:      transformed data
+                torch.Tensor
+        dlogp:  log of diagonal jacobian
+                torch.Tensor
     """
     if not inverse:
         dlogp = torch.log(
@@ -105,15 +115,15 @@ def _tanh_gate(x: torch.Tensor, alpha, beta, inverse=False):
 
 
 class _LinearBlockTransformation(torch.nn.Module):
-    """ Linear block-wise layer of a BNAF """
+    """Linear block-wise layer of a BNAF"""
 
     def __init__(self, dim: int, a: int = 1, b: int = 1):
-        """ Block-wise linear layer
+        """Block-wise linear layer
 
-            Arguments:
-                dim: dimension of original data
-                a: input block factor (a >= 1)
-                b: output block factor (b >= 1)
+        Arguments:
+            dim: dimension of original data
+            a: input block factor (a >= 1)
+            b: output block factor (b >= 1)
 
         """
         super().__init__()
@@ -158,15 +168,15 @@ class _LinearBlockTransformation(torch.nn.Module):
         return weight, log_diag_blocks
 
     def forward(self, x: torch.Tensor, accum_blocks: torch.Tensor = None):
-        """ Apply this layer to the input and accumulate the block diagonals
+        """Apply this layer to the input and accumulate the block diagonals
 
-            Arguments:
-                x:              input tensor
-                accum_blocks:   accumulated log block diagonals from former layers
+        Arguments:
+            x:              input tensor
+            accum_blocks:   accumulated log block diagonals from former layers
 
-            Returns:
-                x:              transformed tensor
-                accum_blocks:   accumulated log block diagonals after applying this layer
+        Returns:
+            x:              transformed tensor
+            accum_blocks:   accumulated log block diagonals after applying this layer
 
         """
         weight, log_diag_blocks = self._weight_and_log_diag
@@ -180,26 +190,26 @@ class _LinearBlockTransformation(torch.nn.Module):
 
 
 class _NonlinearBlockTransformation(torch.nn.Module):
-    """ Nonlinear diagonal block-wise layer of a BNAF """
+    """Nonlinear diagonal block-wise layer of a BNAF"""
 
     def __init__(self, dim: int, b: int, alpha: float = 1.0):
-        """ Nonlinearity that acts as a diagonal (element-wise) transformation.
+        """Nonlinearity that acts as a diagonal (element-wise) transformation.
 
-            The nonlinearity is a gated tanh, where the gate and the bandwidth
-            of the tanh are parameters of the layer:
+        The nonlinearity is a gated tanh, where the gate and the bandwidth
+        of the tanh are parameters of the layer:
 
-                y = beta * tanh(alpha * x) + (1-beta) * x
+            y = beta * tanh(alpha * x) + (1-beta) * x
 
-                where
+            where
 
-                0 < alpha
-                0 < beta < 1
+            0 < alpha
+            0 < beta < 1
 
-            Arguments:
-                dim:    dimension of the data
-                b:      output factor of previous block
+        Arguments:
+            dim:    dimension of the data
+            b:      output factor of previous block
 
-                alpha:  initial bandwidth of tanh gate
+            alpha:  initial bandwidth of tanh gate
         """
         super().__init__()
         assert dim >= 1
@@ -222,11 +232,11 @@ class _NonlinearBlockTransformation(torch.nn.Module):
 
 class BNARFlow(Flow):
     def __init__(self, dim: int, block_sizes: List[int]):
-        """ A block neural autoregressive flow
+        """A block neural autoregressive flow
 
-            Arguments:
-                dim:            input dimension
-                block_sizes:    list of block factors determining hidden layer sizes (> 0)
+        Arguments:
+            dim:            input dimension
+            block_sizes:    list of block factors determining hidden layer sizes (> 0)
         """
         super().__init__()
         assert all(a > 0 for a in block_sizes)

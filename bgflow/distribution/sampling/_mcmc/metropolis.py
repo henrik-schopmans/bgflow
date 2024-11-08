@@ -37,7 +37,7 @@ class MetropolisGauss(object):
         nwalkers=1,
         mapper=None,
     ):
-        """ Metropolis Monte-Carlo Simulation with Gaussian Proposal Steps
+        """Metropolis Monte-Carlo Simulation with Gaussian Proposal Steps
 
         Parameters
         ----------
@@ -105,7 +105,7 @@ class MetropolisGauss(object):
 
     @property
     def trajs(self):
-        """ Returns a list of trajectories, one trajectory for each walker """
+        """Returns a list of trajectories, one trajectory for each walker"""
         T = np.array(self.traj_).astype(np.float32)
         return [T[:, i, :] for i in range(T.shape[1])]
 
@@ -115,7 +115,7 @@ class MetropolisGauss(object):
 
     @property
     def etrajs(self):
-        """ Returns a list of energy trajectories, one trajectory for each walker """
+        """Returns a list of energy trajectories, one trajectory for each walker"""
         E = np.array(self.etraj_)
         return [E[:, i] for i in range(E.shape[1])]
 

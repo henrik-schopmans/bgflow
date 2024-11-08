@@ -2,7 +2,13 @@
 
 import pytest
 import torch
-from bgflow import ConditionalSplineTransformer, CouplingFlow, SplitFlow, NormalDistribution, DenseNet
+from bgflow import (
+    ConditionalSplineTransformer,
+    CouplingFlow,
+    SplitFlow,
+    NormalDistribution,
+    DenseNet,
+)
 
 
 @pytest.mark.parametrize("is_circular", [True, False])
@@ -34,7 +40,12 @@ def test_conditional_spline_transformer_api(is_circular, ctx):
 
 
 @pytest.mark.parametrize(
-    "is_circular", [torch.tensor(True), torch.tensor(False), torch.tensor([True, False], dtype=torch.bool)]
+    "is_circular",
+    [
+        torch.tensor(True),
+        torch.tensor(False),
+        torch.tensor([True, False], dtype=torch.bool),
+    ],
 )
 def test_conditional_spline_continuity(is_circular, ctx):
     pytest.importorskip("nflows")
@@ -52,7 +63,7 @@ def test_conditional_spline_continuity(is_circular, ctx):
         dim_net_out = (3 * n_bins + 1) * dim_trans
     else:
         dim_net_out = 3 * n_bins * dim_trans + int(is_circular.sum())
-    conditioner = DenseNet([dim_cond, dim_net_out], bias_scale=2.)
+    conditioner = DenseNet([dim_cond, dim_net_out], bias_scale=2.0)
 
     transformer = ConditionalSplineTransformer(
         params_net=conditioner,
@@ -60,7 +71,7 @@ def test_conditional_spline_continuity(is_circular, ctx):
     ).to(x_cond)
 
     slopes = transformer._compute_params(x_cond, dim_trans)[2]
-    continuous = torch.isclose(slopes[0,:,0], slopes[0,:,-1]).tolist()
+    continuous = torch.isclose(slopes[0, :, 0], slopes[0, :, -1]).tolist()
     if is_circular.all():
         assert continuous == [True, True]
     elif not is_circular.any():

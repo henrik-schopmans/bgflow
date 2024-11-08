@@ -53,11 +53,15 @@ class HutchinsonEstimator(torch.nn.Module):
             if self._reset_noise == True:
                 self._reset_noise = False
                 if self._rademacher == True:
-                    self._noise = torch.randint(low=0, high=2, size=xs.shape).to(xs) * 2 - 1
+                    self._noise = (
+                        torch.randint(low=0, high=2, size=xs.shape).to(xs) * 2 - 1
+                    )
                 else:
                     self._noise = torch.randn_like(xs)
 
             noise_ddxs = torch.autograd.grad(dxs, xs, self._noise, create_graph=True)[0]
-            divergence = torch.sum((noise_ddxs * self._noise).view(-1, system_dim), 1, keepdim=True)
+            divergence = torch.sum(
+                (noise_ddxs * self._noise).view(-1, system_dim), 1, keepdim=True
+            )
 
         return dxs, -divergence

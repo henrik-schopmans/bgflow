@@ -4,7 +4,9 @@ import torch
 from bgflow.distribution import Energy
 
 
-pytestmark = pytest.mark.filterwarnings("ignore:This Energy instance is defined on multidimensional events")
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:This Energy instance is defined on multidimensional events"
+)
 
 
 class DummyEnergy(Energy):
@@ -41,7 +43,7 @@ def test_energy_event_parser():
     assert not _is_sequence_of_non_empty_sequences_of_integers([10, 10])
     assert not _is_sequence_of_non_empty_sequences_of_integers([[], [10]])
     assert not _is_sequence_of_non_empty_sequences_of_integers(torch.Size([10, 10]))
-    #assert not _is_sequence_of_non_empty_sequences_of_integers([[10, 10, 10]])
+    # assert not _is_sequence_of_non_empty_sequences_of_integers([[10, 10, 10]])
 
 
 @pytest.mark.parametrize("batch", [[23], [23, 71], [23, 71, 13]])
@@ -81,16 +83,13 @@ def test_energy_event_types(batch, with_grad_and_no_grad):
     fx, fy, fz = dummy.force(x, y, z)
     assert all(torch.allclose(-x, f) for (x, f) in zip([x, y, z], [fx, fy, fz]))
     fx, fy, fz = dummy.force(x, y, z, ignore_indices=[1])
-    assert fy is None and all(
-        torch.allclose(-x, f) for (x, f) in zip([x, z], [fx, fz])
-    )
+    assert fy is None and all(torch.allclose(-x, f) for (x, f) in zip([x, z], [fx, fz]))
 
     # this should fail: inconsistent batch dimension
     with pytest.raises(AssertionError):
         batches = [[5, 7], [5, 7], [5, 6]]
         x, y, z = [
-            torch.randn(*batch, *shape)
-            for (batch, shape) in zip(batches, shapes)
+            torch.randn(*batch, *shape) for (batch, shape) in zip(batches, shapes)
         ]
         fx, fy, fz = dummy.force(x, y, z)
 
@@ -98,8 +97,7 @@ def test_energy_event_types(batch, with_grad_and_no_grad):
     with pytest.raises(AssertionError):
         batches = [[5, 7], [5, 7], [5, 7]]
         x, y, z = [
-            torch.randn(*batch, *shape)
-            for (batch, shape) in zip(batches, shapes)
+            torch.randn(*batch, *shape) for (batch, shape) in zip(batches, shapes)
         ]
         y = y[..., :-1]
         fx, fy, fz = dummy.force(x, y, z)
@@ -129,9 +127,7 @@ def test_energy_event_types(batch, with_grad_and_no_grad):
     z.requires_grad_(False)
     fx, fy, fz = dummy.force(x, y, z, ignore_indices=[1])
     assert x.requires_grad and not (y.requires_grad) and (not z.requires_grad)
-    assert fy is None and all(
-        torch.allclose(-x, f) for (x, f) in zip([x, z], [fx, fz])
-    )
+    assert fy is None and all(torch.allclose(-x, f) for (x, f) in zip([x, z], [fx, fz]))
 
     # test for singular shapes in multi-tensor setting
     shapes = [[11], [5], [13]]
@@ -140,7 +136,4 @@ def test_energy_event_types(batch, with_grad_and_no_grad):
     fx, fy, fz = dummy.force(x, y, z)
     assert all(torch.allclose(-x, f) for (x, f) in zip([x, y, z], [fx, fy, fz]))
     fx, fy, fz = dummy.force(x, y, z, ignore_indices=[1])
-    assert fy is None and all(
-        torch.allclose(-x, f) for (x, f) in zip([x, z], [fx, fz])
-    )
-
+    assert fy is None and all(torch.allclose(-x, f) for (x, f) in zip([x, z], [fx, fz]))

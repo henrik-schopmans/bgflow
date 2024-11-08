@@ -1,4 +1,3 @@
-
 import torch
 from .base import Flow
 
@@ -21,7 +20,9 @@ class TorchTransform(Flow):
     def __init__(self, transform, reinterpreted_batch_ndims=0):
         super().__init__()
         if reinterpreted_batch_ndims > 0:
-            transform = torch.distributions.IndependentTransform(transform, reinterpreted_batch_ndims)
+            transform = torch.distributions.IndependentTransform(
+                transform, reinterpreted_batch_ndims
+            )
         self._delegate_transform = transform
 
     def _forward(self, x, **kwargs):
@@ -31,5 +32,5 @@ class TorchTransform(Flow):
 
     def _inverse(self, y, **kwargs):
         x = self._delegate_transform.inv(y)
-        dlogp = - self._delegate_transform.log_abs_det_jacobian(x, y)
+        dlogp = -self._delegate_transform.log_abs_det_jacobian(x, y)
         return x, dlogp[..., None]

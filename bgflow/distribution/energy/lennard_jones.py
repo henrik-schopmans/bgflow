@@ -13,7 +13,15 @@ def lennard_jones_energy_torch(r, eps=1.0, rm=1.0):
 
 class LennardJonesPotential(Energy):
     def __init__(
-            self, dim, n_particles, eps=1.0, rm=1.0, oscillator=True, oscillator_scale=1., two_event_dims=True):
+        self,
+        dim,
+        n_particles,
+        eps=1.0,
+        rm=1.0,
+        oscillator=True,
+        oscillator_scale=1.0,
+        two_event_dims=True,
+    ):
         """Energy for a Lennard-Jones cluster
 
         Parameters
@@ -35,7 +43,7 @@ class LennardJonesPotential(Energy):
             Else, use only one event dimension.
         """
         if two_event_dims:
-            super().__init__([n_particles, dim//n_particles])
+            super().__init__([n_particles, dim // n_particles])
         else:
             super().__init__(dim)
         self._n_particles = n_particles
@@ -47,7 +55,7 @@ class LennardJonesPotential(Energy):
         self._oscillator_scale = oscillator_scale
 
     def _energy(self, x):
-        batch_shape = x.shape[:-len(self.event_shape)]
+        batch_shape = x.shape[: -len(self.event_shape)]
         x = x.view(*batch_shape, self._n_particles, self._n_dims)
 
         dists = distances_from_vectors(
@@ -58,7 +66,9 @@ class LennardJonesPotential(Energy):
         lj_energies = lj_energies.view(*batch_shape, -1).sum(dim=-1) / 2
 
         if self.oscillator:
-            osc_energies = 0.5 * self._remove_mean(x).pow(2).sum(dim=(-2, -1)).view(*batch_shape)
+            osc_energies = 0.5 * self._remove_mean(x).pow(2).sum(dim=(-2, -1)).view(
+                *batch_shape
+            )
             lj_energies = lj_energies + osc_energies * self._oscillator_scale
 
         return lj_energies[:, None]

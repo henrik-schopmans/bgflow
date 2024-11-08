@@ -10,22 +10,22 @@ from .types import assert_numpy, unpack_tensor_tuple
 class IndexBatchIterator(object):
     def __init__(self, n_elems, n_batch):
         """
-            Produces batches of length `n_batch` of an index set
-            `[1, ..., n_elems]` which are sampled randomly without
-            replacement.
+        Produces batches of length `n_batch` of an index set
+        `[1, ..., n_elems]` which are sampled randomly without
+        replacement.
 
-            If `n_elems` is not a multiple of `n_batch` the last sampled
-            batch will be truncated.
+        If `n_elems` is not a multiple of `n_batch` the last sampled
+        batch will be truncated.
 
-            After the iteration throw `StopIteration` its random seed
-            will be reset.
+        After the iteration throw `StopIteration` its random seed
+        will be reset.
 
-            Parameters:
-            -----------
-            n_elems : Integer
-                Number of elements in the index set.
-            n_batch : Integer
-                Number of batch elements sampled.
+        Parameters:
+        -----------
+        n_elems : Integer
+            Number of elements in the index set.
+        n_batch : Integer
+            Number of batch elements sampled.
 
         """
         self._indices = np.arange(n_elems)
@@ -101,14 +101,18 @@ class ClipGradient(torch.nn.Module):
     def forward(self, *xs):
         for x in xs:
             if x.requires_grad:
-                x.register_hook(partial(ClipGradient.clip_tensor, clip=self.clip, last_dim=self.norm_dim))
+                x.register_hook(
+                    partial(
+                        ClipGradient.clip_tensor, clip=self.clip, last_dim=self.norm_dim
+                    )
+                )
         return unpack_tensor_tuple(xs)
 
     @staticmethod
     def clip_tensor(tensor, clip, last_dim):
         clip.to(tensor)
         original_shape = tensor.shape
-        last_dim = (-1, ) if last_dim == -1 else (-1, last_dim)
+        last_dim = (-1,) if last_dim == -1 else (-1, last_dim)
         out = torch.nan_to_num(tensor, nan=0.0).flatten().reshape(*last_dim)
         norm = torch.linalg.norm(out.detach(), dim=-1, keepdim=True)
         factor = (clip.view(-1, *clip.shape) / norm.view(-1, *clip.shape)).view(-1)
@@ -118,24 +122,24 @@ class ClipGradient(torch.nn.Module):
         return out
 
 
-
 class LossReporter:
     """
-        Simple reporter use for reporting losses and plotting them.
+    Simple reporter use for reporting losses and plotting them.
     """
-    
+
     def __init__(self, *labels):
         self._labels = labels
         self._n_reported = len(labels)
         self._raw = [[] for _ in range(self._n_reported)]
-    
+
     def report(self, *losses):
         assert len(losses) == self._n_reported
         for i in range(self._n_reported):
             self._raw[i].append(assert_numpy(losses[i]))
-    
+
     def plot(self, n_smooth=10, log=False):
         import matplotlib.pyplot as plt
+
         fig, axes = plt.subplots(self._n_reported, sharex=True)
         if not isinstance(axes, np.ndarray):
             axes = [axes]

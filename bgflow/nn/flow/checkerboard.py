@@ -6,7 +6,7 @@ from .base import Flow
 
 
 def _make_checkerboard_idxs(sz):
-    even = np.arange(sz, dtype=np.int64) % 2 
+    even = np.arange(sz, dtype=np.int64) % 2
     odd = 1 - even
     grid = np.arange(sz * sz, dtype=np.int64)
     idxs = []
@@ -18,14 +18,11 @@ def _make_checkerboard_idxs(sz):
 
 
 def _checkerboard_2x2_masks(sz):
-        mask = _make_checkerboard_idxs(sz)
-        inv_mask = np.argsort(mask)
-        offset = sz ** 2 // 4
-        sub_masks = [
-            mask[i * offset:(i+1) * offset] 
-            for i in range(4)
-        ]
-        return inv_mask, sub_masks
+    mask = _make_checkerboard_idxs(sz)
+    inv_mask = np.argsort(mask)
+    offset = sz**2 // 4
+    sub_masks = [mask[i * offset : (i + 1) * offset] for i in range(4)]
+    return inv_mask, sub_masks
 
 
 class CheckerboardFlow(Flow):
@@ -35,31 +32,33 @@ class CheckerboardFlow(Flow):
         inv_mask, submasks = _checkerboard_2x2_masks(size)
         self.register_buffer("_sub_masks", torch.LongTensor(submasks))
         self.register_buffer("_inv_mask", torch.LongTensor(inv_mask))
-    
+
     def _forward(self, *xs, **kwargs):
         n_batch = xs[0].shape[0]
         dlogp = torch.zeros(n_batch)
         sz = self._size // 2
         assert len(xs) == 1
         x = xs[0]
-        assert len(x.shape) == 4 and x.shape[1] == self._size and x.shape[2] == self._size,\
-            "`x` needs to be of shape `[n_batch, size, size, n_filters]`"
-        x = x.view(n_batch, self._size ** 2, -1)
+        assert (
+            len(x.shape) == 4 and x.shape[1] == self._size and x.shape[2] == self._size
+        ), "`x` needs to be of shape `[n_batch, size, size, n_filters]`"
+        x = x.view(n_batch, self._size**2, -1)
         xs = []
         for i in range(4):
             patch = x[:, self._sub_masks[i], :].view(n_batch, sz, sz, -1)
             xs.append(patch)
         return (*xs, dlogp)
         return x, dlogp
-    
+
     def _inverse(self, *xs, **kwargs):
         n_batch = xs[0].shape[0]
         dlogp = torch.zeros(n_batch)
         sz = self._size // 2
         assert len(xs) == 4
-        assert all(x.shape[1] == self._size // 2 and x.shape[2] == self._size // 2 for x in xs),\
-            "all `xs` needs to be of shape `[n_batch, size, size, n_filters]`"
-        xs = [x.view(n_batch, sz ** 2, -1) for x in xs]
+        assert all(
+            x.shape[1] == self._size // 2 and x.shape[2] == self._size // 2 for x in xs
+        ), "all `xs` needs to be of shape `[n_batch, size, size, n_filters]`"
+        xs = [x.view(n_batch, sz**2, -1) for x in xs]
         x = torch.cat(xs, axis=-2)[:, self._inv_mask, :].view(
             n_batch, self._size, self._size, -1
         )

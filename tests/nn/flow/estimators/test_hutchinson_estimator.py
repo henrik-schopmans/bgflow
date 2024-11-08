@@ -13,7 +13,8 @@ def test_hutchinson_estimator(dim, rademacher):
     # Test trace estimation of the hutchinson estimator for small dimensions, where it is less noisy
     n_batch = 1024
     time_independent_dynamics = TimeIndependentDynamics(
-        DenseNet([dim, 16, 16, dim], activation=torch.nn.Tanh()))
+        DenseNet([dim, 16, 16, dim], activation=torch.nn.Tanh())
+    )
     hutchinson_estimator = HutchinsonEstimator(rademacher)
     normal_distribution = NormalDistribution(dim)
     x = normal_distribution.sample(n_batch)
@@ -31,7 +32,8 @@ def test_test_hutchinson_estimator_reset_noise(rademacher):
     # Test if the noise vector is resetted to deal with different shape
     dim = 10
     time_independent_dynamics = TimeIndependentDynamics(
-        DenseNet([dim, 16, 16, dim], activation=torch.nn.Tanh()))
+        DenseNet([dim, 16, 16, dim], activation=torch.nn.Tanh())
+    )
     hutchinson_estimator = HutchinsonEstimator(rademacher)
     normal_distribution = NormalDistribution(dim)
 

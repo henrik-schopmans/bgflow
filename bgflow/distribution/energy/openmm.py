@@ -37,20 +37,25 @@ class OpenMMBridge(_Bridge):
     n_simulation_steps : int, optional
         If > 0, perform a number of simulation steps and compute energy and forces for the resulting state.
     """
+
     def __init__(
         self,
         openmm_system,
         openmm_integrator,
-        platform_name='CPU',
+        platform_name="CPU",
         err_handling="warning",
         n_workers=mp.cpu_count(),
-        n_simulation_steps=0
+        n_simulation_steps=0,
     ):
         try:
             from openmm import unit
-        except ImportError: # fall back to older version < 7.6
+        except ImportError:  # fall back to older version < 7.6
             from simtk import unit
-        platform_properties = {'Threads': str(max(1, mp.cpu_count()//n_workers))} if platform_name == "CPU" else {}
+        platform_properties = (
+            {"Threads": str(max(1, mp.cpu_count() // n_workers))}
+            if platform_name == "CPU"
+            else {}
+        )
 
         # Compute all energies in child processes due to a bug in the OpenMM's PME code.
         # This might be problematic if an energy has already been computed in the same program on the parent thread,
@@ -63,12 +68,17 @@ class OpenMMBridge(_Bridge):
             )
         else:
             self.context_wrapper = MultiContext(
-                n_workers, openmm_system, openmm_integrator, platform_name, platform_properties
+                n_workers,
+                openmm_system,
+                openmm_integrator,
+                platform_name,
+                platform_properties,
             )
         self._err_handling = err_handling
         self._n_simulation_steps = n_simulation_steps
-        self._unit_reciprocal = 1/(openmm_integrator.getTemperature() * unit.MOLAR_GAS_CONSTANT_R
-                                   ).value_in_unit(unit.kilojoule_per_mole)
+        self._unit_reciprocal = 1 / (
+            openmm_integrator.getTemperature() * unit.MOLAR_GAS_CONSTANT_R
+        ).value_in_unit(unit.kilojoule_per_mole)
         super().__init__()
 
     @property
@@ -84,16 +94,17 @@ class OpenMMBridge(_Bridge):
         return self._n_simulation_steps
 
     def _reduce_units(self, x):
-        if x is None: return None
+        if x is None:
+            return None
         return x * self._unit_reciprocal
 
     def evaluate(
-            self,
-            batch,
-            evaluate_force=True,
-            evaluate_energy=True,
-            evaluate_positions=False,
-            evaluate_path_probability_ratio=False
+        self,
+        batch,
+        evaluate_force=True,
+        evaluate_energy=True,
+        evaluate_positions=False,
+        evaluate_path_probability_ratio=False,
     ):
         """
         Compute energies/forces for a batch of positions.
@@ -127,18 +138,23 @@ class OpenMMBridge(_Bridge):
         batch_array = assert_numpy(batch, arr_type=self._FLOATING_TYPE)
 
         # assert correct number of positions
-        assert batch_array.shape[1] == self._openmm_system.getNumParticles() * self._SPATIAL_DIM
+        assert (
+            batch_array.shape[1]
+            == self._openmm_system.getNumParticles() * self._SPATIAL_DIM
+        )
 
         # reshape to (B, N, D)
         batch_array = batch_array.reshape(batch.shape[0], -1, self._SPATIAL_DIM)
-        energies, forces, new_positions, log_path_probability_ratio = self.context_wrapper.evaluate(
-            batch_array,
-            evaluate_energy=evaluate_energy,
-            evaluate_force=evaluate_force,
-            evaluate_positions=evaluate_positions,
-            evaluate_path_probability_ratio=evaluate_path_probability_ratio,
-            err_handling=self._err_handling,
-            n_simulation_steps=self._n_simulation_steps
+        energies, forces, new_positions, log_path_probability_ratio = (
+            self.context_wrapper.evaluate(
+                batch_array,
+                evaluate_energy=evaluate_energy,
+                evaluate_force=evaluate_force,
+                evaluate_positions=evaluate_positions,
+                evaluate_path_probability_ratio=evaluate_path_probability_ratio,
+                err_handling=self._err_handling,
+                n_simulation_steps=self._n_simulation_steps,
+            )
         )
 
         # divide by kT
@@ -146,18 +162,33 @@ class OpenMMBridge(_Bridge):
         forces = self._reduce_units(forces)
 
         # to PyTorch tensors
-        energies = torch.tensor(energies).to(batch).reshape(-1, 1) if evaluate_energy else None
+        energies = (
+            torch.tensor(energies).to(batch).reshape(-1, 1) if evaluate_energy else None
+        )
         forces = (
-            torch.tensor(forces).to(batch).reshape(batch.shape[0], self._openmm_system.getNumParticles()*self._SPATIAL_DIM)
-            if evaluate_force else None
+            torch.tensor(forces)
+            .to(batch)
+            .reshape(
+                batch.shape[0],
+                self._openmm_system.getNumParticles() * self._SPATIAL_DIM,
+            )
+            if evaluate_force
+            else None
         )
         new_positions = (
-            torch.tensor(new_positions).to(batch).reshape(batch.shape[0], self._openmm_system.getNumParticles()*self._SPATIAL_DIM)
-            if evaluate_positions else None
+            torch.tensor(new_positions)
+            .to(batch)
+            .reshape(
+                batch.shape[0],
+                self._openmm_system.getNumParticles() * self._SPATIAL_DIM,
+            )
+            if evaluate_positions
+            else None
         )
         log_path_probability_ratio = (
             torch.tensor(log_path_probability_ratio).to(batch).reshape(-1, 1)
-            if evaluate_path_probability_ratio else None
+            if evaluate_path_probability_ratio
+            else None
         )
 
         # store
@@ -184,7 +215,9 @@ class MultiContext:
         A dictionary of platform properties.
     """
 
-    def __init__(self, n_workers, system, integrator, platform_name, platform_properties={}):
+    def __init__(
+        self, n_workers, system, integrator, platform_name, platform_properties={}
+    ):
         """Set up workers and queues."""
         self._n_workers = n_workers
         self._system = system
@@ -201,7 +234,7 @@ class MultiContext:
                 "It looks like you are using an OpenMMBridge with multiple workers in an ipython environment. "
                 "This can behave a bit silly upon KeyboardInterrupt (e.g., kill the stdout stream). "
                 "If you experience any issues, consider initializing the bridge with n_workers=1 in ipython/jupyter.",
-                UserWarning
+                UserWarning,
             )
         except NameError:
             pass
@@ -217,7 +250,8 @@ class MultiContext:
             worker = MultiContext.Worker(
                 self._task_queue,
                 self._result_queue,
-                self._system, self._integrator,
+                self._system,
+                self._integrator,
                 self._platform_name,
                 self._platform_properties,
             )
@@ -225,15 +259,15 @@ class MultiContext:
             worker.start()
 
     def evaluate(
-            self,
-            positions,
-            box_vectors=None,
-            evaluate_energy=True,
-            evaluate_force=True,
-            evaluate_positions=False,
-            evaluate_path_probability_ratio=False,
-            err_handling="warning",
-            n_simulation_steps=0
+        self,
+        positions,
+        box_vectors=None,
+        evaluate_energy=True,
+        evaluate_force=True,
+        evaluate_positions=False,
+        evaluate_path_probability_ratio=False,
+        err_handling="warning",
+        n_simulation_steps=0,
     ):
         """Delegate energy and force computations to the workers.
 
@@ -268,18 +302,28 @@ class MultiContext:
         log_path_probability_ratio : np.ndarray or None
             The logarithmic path probability ratios; its shape  is (len(positions), )
         """
-        assert box_vectors is None or len(box_vectors) == len(positions), \
-            "box_vectors and positions have to be the same length"
+        assert box_vectors is None or len(box_vectors) == len(
+            positions
+        ), "box_vectors and positions have to be the same length"
         if not self.is_alive():
             self._reinitialize()
 
         box_vectors = [None for _ in positions] if box_vectors is None else box_vectors
         try:
             for i, (p, bv) in enumerate(zip(positions, box_vectors)):
-                self._task_queue.put([
-                    i, p, bv, evaluate_energy, evaluate_force, evaluate_positions,
-                    evaluate_path_probability_ratio, err_handling, n_simulation_steps
-                ])
+                self._task_queue.put(
+                    [
+                        i,
+                        p,
+                        bv,
+                        evaluate_energy,
+                        evaluate_force,
+                        evaluate_positions,
+                        evaluate_path_probability_ratio,
+                        err_handling,
+                        n_simulation_steps,
+                    ]
+                )
             results = [self._result_queue.get() for _ in positions]
         except Exception as e:
             self.terminate()
@@ -289,12 +333,19 @@ class MultiContext:
             np.array([res[1] for res in results]) if evaluate_energy else None,
             np.array([res[2] for res in results]) if evaluate_force else None,
             np.array([res[3] for res in results]) if evaluate_positions else None,
-            np.array([res[4] for res in results]) if evaluate_path_probability_ratio else None
+            (
+                np.array([res[4] for res in results])
+                if evaluate_path_probability_ratio
+                else None
+            ),
         )
 
     def is_alive(self):
         """Whether all workers are alive."""
-        return all(worker.is_alive() for worker in self._workers) and len(self._workers) > 0
+        return (
+            all(worker.is_alive() for worker in self._workers)
+            and len(self._workers) > 0
+        )
 
     def terminate(self):
         """Terminate the workers."""
@@ -302,7 +353,7 @@ class MultiContext:
         for _ in self._workers:
             self._task_queue.put(None)
         # hard termination
-        #for worker in self._workers:
+        # for worker in self._workers:
         #    worker.terminate()
 
     def __del__(self):
@@ -327,12 +378,20 @@ class MultiContext:
             A dictionary of platform properties.
         """
 
-        def __init__(self, task_queue, result_queue, system, integrator, platform_name, platform_properties):
+        def __init__(
+            self,
+            task_queue,
+            result_queue,
+            system,
+            integrator,
+            platform_name,
+            platform_properties,
+        ):
             super(MultiContext.Worker, self).__init__()
             self._task_queue = task_queue
             self._result_queue = result_queue
             self._openmm_system = system
-            self._openmm_integrator = pickle.loads( pickle.dumps(integrator))
+            self._openmm_integrator = pickle.loads(pickle.dumps(integrator))
             self._openmm_platform_name = platform_name
             self._openmm_platform_properties = platform_properties
             self._openmm_context = None
@@ -345,7 +404,7 @@ class MultiContext:
             try:
                 from openmm import unit
                 from openmm import Platform, Context
-            except ImportError: # fall back to older version < 7.6
+            except ImportError:  # fall back to older version < 7.6
                 from simtk import unit
                 from simtk.openmm import Platform, Context
 
@@ -358,33 +417,57 @@ class MultiContext:
                 self._openmm_system,
                 self._openmm_integrator,
                 openmm_platform,
-                self._openmm_platform_properties
+                self._openmm_platform_properties,
             )
             self._openmm_context.reinitialize(preserveState=True)
 
             # get tasks from the task queue
             for task in iter(self._task_queue.get, None):
-                (index, positions, box_vectors, evaluate_energy, evaluate_force,
-                 evaluate_positions, evaluate_path_probability_ratio, err_handling, n_simulation_steps) = task
+                (
+                    index,
+                    positions,
+                    box_vectors,
+                    evaluate_energy,
+                    evaluate_force,
+                    evaluate_positions,
+                    evaluate_path_probability_ratio,
+                    err_handling,
+                    n_simulation_steps,
+                ) = task
                 try:
                     # initialize state
                     self._openmm_context.setPositions(positions)
                     if box_vectors is not None:
                         self._openmm_context.setPeriodicBoxVectors(box_vectors)
-                    log_path_probability_ratio = self._openmm_integrator.step(n_simulation_steps)
+                    log_path_probability_ratio = self._openmm_integrator.step(
+                        n_simulation_steps
+                    )
 
                     # compute energy and forces
                     state = self._openmm_context.getState(
                         getEnergy=evaluate_energy,
                         getForces=evaluate_force,
-                        getPositions=evaluate_positions
+                        getPositions=evaluate_positions,
                     )
-                    energy = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole) if evaluate_energy else None
+                    energy = (
+                        state.getPotentialEnergy().value_in_unit(
+                            unit.kilojoule_per_mole
+                        )
+                        if evaluate_energy
+                        else None
+                    )
                     forces = (
-                        state.getForces(asNumpy=True).value_in_unit(unit.kilojoule_per_mole / unit.nanometer)
-                        if evaluate_force else None
+                        state.getForces(asNumpy=True).value_in_unit(
+                            unit.kilojoule_per_mole / unit.nanometer
+                        )
+                        if evaluate_force
+                        else None
                     )
-                    new_positions = state.getPositions().value_in_unit(unit.nanometers) if evaluate_positions else None
+                    new_positions = (
+                        state.getPositions().value_in_unit(unit.nanometers)
+                        if evaluate_positions
+                        else None
+                    )
                 except Exception as e:
                     if err_handling == "warning":
                         warnings.warn("Suppressed exception: {}".format(e))
@@ -414,26 +497,30 @@ class SingleContext:
         A dictionary of platform properties.
     """
 
-    def __init__(self, n_workers, system, integrator, platform_name, platform_properties={}):
+    def __init__(
+        self, n_workers, system, integrator, platform_name, platform_properties={}
+    ):
         """Set up workers and queues."""
         try:
             from openmm import Platform, Context
-        except ImportError: # fall back to older version < 7.6
+        except ImportError:  # fall back to older version < 7.6
             from simtk.openmm import Platform, Context
         assert n_workers == 1
         openmm_platform = Platform.getPlatformByName(platform_name)
-        self._openmm_context = Context(system, integrator, openmm_platform, platform_properties)
+        self._openmm_context = Context(
+            system, integrator, openmm_platform, platform_properties
+        )
 
     def evaluate(
-            self,
-            positions,
-            box_vectors=None,
-            evaluate_energy=True,
-            evaluate_force=True,
-            evaluate_positions=False,
-            evaluate_path_probability_ratio=False,
-            err_handling="warning",
-            n_simulation_steps=0
+        self,
+        positions,
+        box_vectors=None,
+        evaluate_energy=True,
+        evaluate_force=True,
+        evaluate_positions=False,
+        evaluate_path_probability_ratio=False,
+        err_handling="warning",
+        n_simulation_steps=0,
     ):
         """Compute energies and/or forces.
 
@@ -470,16 +557,17 @@ class SingleContext:
         """
         try:
             from openmm import unit
-        except ImportError: # fall back to older version < 7.6
+        except ImportError:  # fall back to older version < 7.6
             from simtk import unit
-        assert box_vectors is None or len(box_vectors) == len(positions), \
-            "box_vectors and positions have to be the same length"
+        assert box_vectors is None or len(box_vectors) == len(
+            positions
+        ), "box_vectors and positions have to be the same length"
         box_vectors = [None for _ in positions] if box_vectors is None else box_vectors
 
         forces = np.zeros_like(positions)
-        energies = np.zeros_like(positions[:,0,0])
+        energies = np.zeros_like(positions[:, 0, 0])
         new_positions = np.zeros_like(positions)
-        log_path_probability_ratios = np.zeros_like(positions[:,0,0])
+        log_path_probability_ratios = np.zeros_like(positions[:, 0, 0])
 
         for i, (p, bv) in enumerate(zip(positions, box_vectors)):
 
@@ -488,25 +576,42 @@ class SingleContext:
                 self._openmm_context.setPositions(p)
                 if bv is not None:
                     self._openmm_context.setPeriodicBoxVectors(bv)
-                log_path_probability_ratio = self._openmm_context.getIntegrator().step(n_simulation_steps)
+                log_path_probability_ratio = self._openmm_context.getIntegrator().step(
+                    n_simulation_steps
+                )
 
                 # compute energy and forces
                 state = self._openmm_context.getState(
                     getEnergy=evaluate_energy,
                     getForces=evaluate_force,
-                    getPositions=evaluate_positions
+                    getPositions=evaluate_positions,
                 )
-                energy = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole) if evaluate_energy else None
+                energy = (
+                    state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+                    if evaluate_energy
+                    else None
+                )
                 force = (
-                    state.getForces(asNumpy=True).value_in_unit(unit.kilojoule_per_mole / unit.nanometer)
-                    if evaluate_force else None
+                    state.getForces(asNumpy=True).value_in_unit(
+                        unit.kilojoule_per_mole / unit.nanometer
+                    )
+                    if evaluate_force
+                    else None
                 )
-                new_pos = state.getPositions().value_in_unit(unit.nanometers) if evaluate_positions else None
+                new_pos = (
+                    state.getPositions().value_in_unit(unit.nanometers)
+                    if evaluate_positions
+                    else None
+                )
 
                 energies[i] = energy if evaluate_energy else 0.0
-                forces[i,:,:] = force if evaluate_force else 0.0
-                new_positions[i,:,:] = new_pos if evaluate_positions else 0.0
-                log_path_probability_ratios[i] = log_path_probability_ratio if evaluate_path_probability_ratio else 0.0
+                forces[i, :, :] = force if evaluate_force else 0.0
+                new_positions[i, :, :] = new_pos if evaluate_positions else 0.0
+                log_path_probability_ratios[i] = (
+                    log_path_probability_ratio
+                    if evaluate_path_probability_ratio
+                    else 0.0
+                )
 
             except Exception as e:
                 if err_handling == "warning":
@@ -518,7 +623,7 @@ class SingleContext:
             energies if evaluate_energy else None,
             forces if evaluate_force else None,
             new_positions if evaluate_positions else None,
-            log_path_probability_ratios if evaluate_path_probability_ratio else None
+            log_path_probability_ratios if evaluate_path_probability_ratio else None,
         )
 
 
@@ -528,6 +633,6 @@ class OpenMMEnergy(_BridgeEnergy):
             warnings.warn(
                 "dimension argument in OpenMMEnergy is deprecated and will be ignored. "
                 "The dimension is directly inferred from the system.",
-                DeprecationWarning
+                DeprecationWarning,
             )
         super().__init__(bridge, two_event_dims=two_event_dims)

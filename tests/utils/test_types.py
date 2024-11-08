@@ -1,5 +1,3 @@
-
-
 from bgflow.utils import as_numpy
 import numpy as np
 import torch

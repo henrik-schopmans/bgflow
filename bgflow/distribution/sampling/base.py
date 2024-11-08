@@ -1,4 +1,3 @@
-
 from typing import Tuple
 import torch
 from ...utils.types import unpack_tensor_tuple, pack_tensor_in_list
@@ -22,13 +21,13 @@ class Sampler(torch.nn.Module):
     def __init__(self, return_hook=lambda x: x, **kwargs):
         super().__init__(**kwargs)
         self.return_hook = return_hook
-    
+
     def _sample_with_temperature(self, n_samples, temperature, *args, **kwargs):
         raise NotImplementedError()
-        
+
     def _sample(self, n_samples, *args, **kwargs):
         raise NotImplementedError()
-    
+
     def sample(self, n_samples, temperature=1.0, *args, **kwargs):
         """Create a number of samples.
 
@@ -50,18 +49,22 @@ class Sampler(torch.nn.Module):
         if isinstance(temperature, float) and temperature == 1.0:
             samples = self._sample(n_samples, *args, **kwargs)
         else:
-            samples = self._sample_with_temperature(n_samples, temperature, *args, **kwargs)
+            samples = self._sample_with_temperature(
+                n_samples, temperature, *args, **kwargs
+            )
         samples = pack_tensor_in_list(samples)
         return unpack_tensor_tuple(self.return_hook(samples))
 
-    def sample_to_cpu(self, n_samples, batch_size=64, *args,  **kwargs):
+    def sample_to_cpu(self, n_samples, batch_size=64, *args, **kwargs):
         """A utility method for creating many samples that might not fit into GPU memory."""
         with torch.no_grad():
             samples = self.sample(min(n_samples, batch_size), *args, **kwargs)
             samples = pack_tensor_in_list(samples)
             samples = [tensor.detach().cpu() for tensor in samples]
             while len(samples[0]) < n_samples:
-                new_samples = self.sample(min(n_samples-len(samples[0]), batch_size), *args, **kwargs)
+                new_samples = self.sample(
+                    min(n_samples - len(samples[0]), batch_size), *args, **kwargs
+                )
                 new_samples = pack_tensor_in_list(new_samples)
                 for i, new in enumerate(new_samples):
                     samples[i] = torch.cat([samples[i], new.detach().cpu()], dim=0)

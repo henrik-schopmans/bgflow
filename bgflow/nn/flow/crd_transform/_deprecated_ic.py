@@ -7,7 +7,7 @@ from bgflow.nn.flow.base import Flow
 
 
 def xyz2ic(x, Z_indices, torsion_cut=None):
-    """ Computes internal coordinates from Cartesian coordinates
+    """Computes internal coordinates from Cartesian coordinates
 
     Parameters
     ----------
@@ -250,7 +250,7 @@ def decompose_Z_indices(cart_indices, Z_indices):
 
 
 def ics2xyz_local_log_det_jac_batchexpand(ics, Z_indices, index2zorder, xyz, eps=1e-10):
-    """ For systems exclusively described in internal coordinates: convert global Z matrix to Cartesian
+    """For systems exclusively described in internal coordinates: convert global Z matrix to Cartesian
 
     Parameters
     ----------
@@ -315,7 +315,7 @@ def ics2xyz_local_log_det_jac_decomposed(
 
 
 def periodic_angle_loss(angles):
-    """ Penalizes angles outside the range [-pi, pi]
+    """Penalizes angles outside the range [-pi, pi]
 
     Use this as an energy loss to avoid violating invertibility in internal coordinate transforms.
     non-unique reconstruction of angles. Computes
@@ -337,7 +337,7 @@ def periodic_angle_loss(angles):
 
 
 class MixedCoordinateTransform(Flow):
-    """ Conversion between Cartesian coordinates and whitened Cartesian / whitened internal coordinates """
+    """Conversion between Cartesian coordinates and whitened Cartesian / whitened internal coordinates"""
 
     def __init__(
         self,
@@ -504,7 +504,7 @@ def ic2xy0(p1, p2, d14, a124):
 
 
 def ics2xyz_global(ics, Z_indices):
-    """ For systems exclusively described in internal coordinates: convert global Z matrix to Cartesian """
+    """For systems exclusively described in internal coordinates: convert global Z matrix to Cartesian"""
     batchsize = ics.shape[0]
     index2zorder = np.argsort(Z_indices[:, 0])
     # Fix coordinate system by placing first three atoms
@@ -531,7 +531,7 @@ def ics2xyz_global(ics, Z_indices):
 
 
 def ics2xyz_local(ics, Z_indices, index2zorder, xyz):
-    """ For systems exclusively described in internal coordinates: convert global Z matrix to Cartesian
+    """For systems exclusively described in internal coordinates: convert global Z matrix to Cartesian
 
     Parameters
     ----------
@@ -674,7 +674,7 @@ def ics2xyz_global_log_det_jac(ics, Z_indices, global_transform=True):
 
 
 class InternalCoordinatesTransformation(Flow):
-    """ Conversion between internal and Cartesian coordinates """
+    """Conversion between internal and Cartesian coordinates"""
 
     def __init__(self, Z_indices, Xnorm=None, torsion_cut=None):
         warnings.warn(

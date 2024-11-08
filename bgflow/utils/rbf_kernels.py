@@ -3,8 +3,12 @@ import torch
 from typing import Union
 
 
-def kernelize_with_rbf(d: torch.Tensor, mu: Union[torch.Tensor, float], gamma: Union[torch.Tensor, float] = 1.0,
-                       eps=1e-6) -> torch.Tensor:
+def kernelize_with_rbf(
+    d: torch.Tensor,
+    mu: Union[torch.Tensor, float],
+    gamma: Union[torch.Tensor, float] = 1.0,
+    eps=1e-6,
+) -> torch.Tensor:
     """
     Takes a distance matrix `d` of shape
 
@@ -47,7 +51,7 @@ def kernelize_with_rbf(d: torch.Tensor, mu: Union[torch.Tensor, float], gamma: U
     Examples
     --------
     """
-    rbfs = torch.exp(-(d - mu).pow(2) / gamma ** 2) + eps
+    rbfs = torch.exp(-(d - mu).pow(2) / gamma**2) + eps
     rbfs = rbfs / rbfs.sum(dim=-1, keepdim=True)
     return rbfs
 
@@ -86,8 +90,12 @@ class RbfEncoder(torch.nn.Module):
         return kernelize_with_rbf(d, self._mus, gammas)
 
 
-def rbf_kernels(d: torch.Tensor, mu: Union[torch.Tensor, float], neg_log_gamma: Union[torch.Tensor, float],
-                derivative=False) -> torch.Tensor:
+def rbf_kernels(
+    d: torch.Tensor,
+    mu: Union[torch.Tensor, float],
+    neg_log_gamma: Union[torch.Tensor, float],
+    derivative=False,
+) -> torch.Tensor:
     """
     Takes a distance matrix `d` of shape
 
@@ -138,7 +146,7 @@ def rbf_kernels(d: torch.Tensor, mu: Union[torch.Tensor, float], neg_log_gamma: 
     if derivative:
         drbfs = -2 * (d - mu) * inv_gamma.pow(2) * rbfs
         sdrbfs = drbfs.sum(dim=-1, keepdim=True)
-        dkernels = drbfs / (1e-6 + srbfs) - rbfs * sdrbfs / (1e-6 + srbfs ** 2)
+        dkernels = drbfs / (1e-6 + srbfs) - rbfs * sdrbfs / (1e-6 + srbfs**2)
     else:
         dkernels = None
     return kernels, dkernels

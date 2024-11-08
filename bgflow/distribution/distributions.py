@@ -1,11 +1,15 @@
-
 import torch
 from .energy import Energy
 from .sampling import Sampler
 from torch.distributions import constraints
 
 
-__all__ = ["TorchDistribution", "CustomDistribution", "UniformDistribution", "SloppyUniform"]
+__all__ = [
+    "TorchDistribution",
+    "CustomDistribution",
+    "UniformDistribution",
+    "SloppyUniform",
+]
 
 
 class CustomDistribution(Energy, Sampler):
@@ -22,6 +26,7 @@ class CustomDistribution(Energy, Sampler):
     -----
     It is the user's responsibility to ensure that the sampler and energy are consistent.
     """
+
     def __init__(self, energy, sampler, **kwargs):
         super().__init__(dim=energy.event_shapes, **kwargs)
         self._delegate_energy = energy
@@ -42,6 +47,7 @@ class TorchDistribution(Energy, Sampler):
     of this class provide all methods and attributes of torch components,
     while also implementing the `Energy` and `Sampler` interfaces in bgflow.
     """
+
     def __init__(self, distribution: torch.distributions.Distribution):
         self._delegate = distribution
         super().__init__(dim=distribution.event_shape)
@@ -57,7 +63,7 @@ class TorchDistribution(Energy, Sampler):
         raise NotImplementedError()
 
     def _energy(self, x):
-        return -self._delegate.log_prob(x)[:,None]
+        return -self._delegate.log_prob(x)[:, None]
 
     def __getattr__(self, name):
         try:
@@ -75,7 +81,7 @@ class _SloppyUniform(torch.distributions.Uniform):
 
     @constraints.dependent_property(is_discrete=False, event_dim=0)
     def support(self):
-        return constraints.interval(self.low-self.tol, self.high+self.tol)
+        return constraints.interval(self.low - self.tol, self.high + self.tol)
 
 
 class SloppyUniform(torch.nn.Module):
@@ -98,7 +104,9 @@ class SloppyUniform(torch.nn.Module):
             try:
                 return super().__getattr__(name=name)
             except AttributeError:
-                uniform = _SloppyUniform(self.low, self.high, self.validate_args, tol=self.tol)
+                uniform = _SloppyUniform(
+                    self.low, self.high, self.validate_args, tol=self.tol
+                )
                 if hasattr(uniform, name):
                     return getattr(uniform, name)
             except:
@@ -107,6 +115,7 @@ class SloppyUniform(torch.nn.Module):
 
 class UniformDistribution(TorchDistribution):
     """Shortcut"""
+
     def __init__(self, low, high, tol=1e-5, validate_args=None, n_event_dims=1):
         uniform = SloppyUniform(low, high, validate_args, tol=tol)
         independent = torch.distributions.Independent(uniform, n_event_dims)
@@ -115,11 +124,13 @@ class UniformDistribution(TorchDistribution):
 
     def _energy(self, x):
         try:
-            y = - self._delegate.log_prob(x)[:,None]
+            y = -self._delegate.log_prob(x)[:, None]
             assert torch.all(torch.isfinite(y))
             return y
         except (ValueError, AssertionError):
-            return -self._delegate.log_prob(self._delegate.sample(sample_shape=x.shape[:-1]))[:,None]
+            return -self._delegate.log_prob(
+                self._delegate.sample(sample_shape=x.shape[:-1])
+            )[:, None]
 
     def _sample_with_temperature(self, n_samples, temperature):
         return self._sample(n_samples)

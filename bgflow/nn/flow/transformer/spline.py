@@ -11,6 +11,7 @@ DEFAULT_MIN_BIN_WIDTH = 1e-3
 DEFAULT_MIN_BIN_HEIGHT = 1e-3
 DEFAULT_MIN_DERIVATIVE = 1e-3
 
+
 class ConditionalSplineTransformer(Transformer):
     def __init__(
         self,
@@ -73,6 +74,7 @@ class ConditionalSplineTransformer(Transformer):
 
         from inspect import getfullargspec
         from nflows.transforms.splines import rational_quadratic_spline
+
         identity_option = "enable_identity_init"
         if identity_option in getfullargspec(rational_quadratic_spline)[0]:
             self._default_settings[identity_option] = True
@@ -80,9 +82,8 @@ class ConditionalSplineTransformer(Transformer):
             warnings.warn(
                 f"your nflows version does not support '{identity_option}'."
                 "See https://github.com/bayesiains/nflows/pull/65",
-                UserWarning
+                UserWarning,
             )
-
 
     def _compute_params(self, x, y_dim):
         """Compute widths, heights, and slopes from x through the params_net.
@@ -112,8 +113,13 @@ class ConditionalSplineTransformer(Transformer):
         n_bins = params.shape[-1] // (y_dim * 3)
         widths, heights, slopes, noncircular_slopes = torch.split(
             params,
-            [n_bins * y_dim, n_bins * y_dim, n_bins * y_dim, self._n_noncircular(y_dim)],
-            dim=-1
+            [
+                n_bins * y_dim,
+                n_bins * y_dim,
+                n_bins * y_dim,
+                self._n_noncircular(y_dim),
+            ],
+            dim=-1,
         )
         widths = widths.reshape(*batch_shape, y_dim, n_bins)
         heights = heights.reshape(*batch_shape, y_dim, n_bins)
@@ -130,18 +136,18 @@ class ConditionalSplineTransformer(Transformer):
         from nflows.transforms.base import InputOutsideDomain
 
         widths, heights, slopes = self._compute_params(x, y.shape[-1])
-        rqs = lambda y : rational_quadratic_spline(
-                y,
-                widths,
-                heights,
-                slopes,
-                inverse=True,
-                left=self._left,
-                right=self._right,
-                top=self._top,
-                bottom=self._bottom,
-                **self._default_settings
-            )
+        rqs = lambda y: rational_quadratic_spline(
+            y,
+            widths,
+            heights,
+            slopes,
+            inverse=True,
+            left=self._left,
+            right=self._right,
+            top=self._top,
+            bottom=self._bottom,
+            **self._default_settings,
+        )
         try:
             z, dlogp = rqs(y)
         except InputOutsideDomain:
@@ -150,7 +156,7 @@ class ConditionalSplineTransformer(Transformer):
             warnings.warn(
                 f"InputOutsideDomain: min {exceeded_left.item()}; "
                 f"max {self._right} + {exceeded_right.item()}",
-                UserWarning
+                UserWarning,
             )
             z, dlogp = rqs(y.clamp(self._left, self._right))
 
@@ -171,7 +177,7 @@ class ConditionalSplineTransformer(Transformer):
             right=self._right,
             top=self._top,
             bottom=self._bottom,
-            **self._default_settings
+            **self._default_settings,
         )
         try:
             z, dlogp = rqs(y)
@@ -181,7 +187,7 @@ class ConditionalSplineTransformer(Transformer):
             warnings.warn(
                 f"InputOutsideDomain: min {exceeded_left.item()}; "
                 f"max {self._right} + {exceeded_right.item()}",
-                UserWarning
+                UserWarning,
             )
             z, dlogp = rqs(y.clamp(self._left, self._right))
 

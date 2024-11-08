@@ -5,10 +5,10 @@ import torch.nn.functional as F
 
 class PeriodicTabulatedTransform(Flow):
     def __init__(
-            self,
-            support_points: torch.Tensor,
-            support_values: torch.Tensor,
-            slopes: torch.Tensor,
+        self,
+        support_points: torch.Tensor,
+        support_values: torch.Tensor,
+        slopes: torch.Tensor,
     ):
         """
         Parameters
@@ -25,9 +25,13 @@ class PeriodicTabulatedTransform(Flow):
         self.register_buffer("_support_values", support_values)
         self.register_buffer("_slopes", torch.clamp(slopes, 1e-6, 1e6))
         widths = support_points[..., 1:] - support_points[..., :-1]
-        assert torch.all(widths >= 0.0), ValueError("support points must be ascending in last dimension")
+        assert torch.all(widths >= 0.0), ValueError(
+            "support points must be ascending in last dimension"
+        )
         heights = support_values[..., 1:] - support_values[..., :-1]
-        assert torch.all(heights >= 0.0), ValueError("support values must be ascending in last dimension")
+        assert torch.all(heights >= 0.0), ValueError(
+            "support values must be ascending in last dimension"
+        )
 
     def _forward(self, x: torch.Tensor):
         # shift into primary interval
@@ -37,8 +41,12 @@ class PeriodicTabulatedTransform(Flow):
         assert (x >= left).all()
         assert (x <= right).all()
         # evaluate spline
-        y, dlogp = rq_spline(x, self._support_points, self._support_values, self._slopes)
-        return y.clamp(self._support_values.min(), self._support_values.max()), dlogp.sum(dim=-1, keepdim=True)
+        y, dlogp = rq_spline(
+            x, self._support_points, self._support_values, self._slopes
+        )
+        return y.clamp(
+            self._support_values.min(), self._support_values.max()
+        ), dlogp.sum(dim=-1, keepdim=True)
 
     def _inverse(self, x: torch.Tensor, *args, **kwargs):
         # shift into primary interval
@@ -48,8 +56,12 @@ class PeriodicTabulatedTransform(Flow):
         assert (x >= bottom).all()
         assert (x <= top).all()
         # evaluate spline
-        y, dlogp = rq_spline(x, self._support_points, self._support_values, self._slopes, inverse=True)
-        return y.clamp(self._support_points.min(), self._support_points.max()), dlogp.sum(dim=-1, keepdim=True)
+        y, dlogp = rq_spline(
+            x, self._support_points, self._support_values, self._slopes, inverse=True
+        )
+        return y.clamp(
+            self._support_points.min(), self._support_points.max()
+        ), dlogp.sum(dim=-1, keepdim=True)
 
 
 DEFAULT_MIN_BIN_WIDTH = 1e-3
@@ -58,14 +70,14 @@ DEFAULT_MIN_DERIVATIVE = 1e-3
 
 
 def rq_spline(
-        inputs,
-        supportx,
-        supporty,
-        derivatives,
-        inverse=False,
-        min_bin_width=1e-4,#DEFAULT_MIN_BIN_WIDTH,
-        min_bin_height=1e-4,#=1e-8,#DEFAULT_MIN_BIN_HEIGHT,
-        min_derivative=1e-4,#DEFAULT_MIN_DERIVATIVE,
+    inputs,
+    supportx,
+    supporty,
+    derivatives,
+    inverse=False,
+    min_bin_width=1e-4,  # DEFAULT_MIN_BIN_WIDTH,
+    min_bin_height=1e-4,  # =1e-8,#DEFAULT_MIN_BIN_HEIGHT,
+    min_derivative=1e-4,  # DEFAULT_MIN_DERIVATIVE,
 ):
     """Rational Quadratic Spline
     Parameters
@@ -104,16 +116,14 @@ def rq_spline(
     num_bins = supportx.shape[-1] - 1
     widths = supportx[..., 1:] - supportx[..., :-1]
     widths = min_bin_width + (1 - min_bin_width * num_bins) * widths
-    supportx = (
-        supportx.min(dim=-1, keepdim=True)[0]
-        + F.pad(torch.cumsum(widths, dim=-1), pad=(1, 0), mode="constant", value=0.0)
+    supportx = supportx.min(dim=-1, keepdim=True)[0] + F.pad(
+        torch.cumsum(widths, dim=-1), pad=(1, 0), mode="constant", value=0.0
     )
 
     heights = supporty[..., 1:] - supporty[..., :-1]
     heights = min_bin_height + (1 - min_bin_height * num_bins) * heights
-    supporty = (
-        supporty.min(dim=-1, keepdim=True)[0]
-        + F.pad(torch.cumsum(heights, dim=-1), pad=(1, 0), mode="constant", value=0.0)
+    supporty = supporty.min(dim=-1, keepdim=True)[0] + F.pad(
+        torch.cumsum(heights, dim=-1), pad=(1, 0), mode="constant", value=0.0
     )
 
     derivatives = min_derivative + derivatives
@@ -137,15 +147,13 @@ def rq_spline(
     input_heights = select_item(heights, bin_idx)
 
     if inverse:
-        a = (((inputs - input_supporty) * (input_derivatives
-                                           + input_derivatives_plus_one
-                                           - 2 * input_delta)
-              + input_heights * (input_delta - input_derivatives)))
-        b = (input_heights * input_derivatives
-             - (inputs - input_supporty) * (input_derivatives
-                                            + input_derivatives_plus_one
-                                            - 2 * input_delta))
-        c = - input_delta * (inputs - input_supporty)
+        a = (inputs - input_supporty) * (
+            input_derivatives + input_derivatives_plus_one - 2 * input_delta
+        ) + input_heights * (input_delta - input_derivatives)
+        b = input_heights * input_derivatives - (inputs - input_supporty) * (
+            input_derivatives + input_derivatives_plus_one - 2 * input_delta
+        )
+        c = -input_delta * (inputs - input_supporty)
 
         discriminant = b.pow(2) - 4 * a * c
         assert (discriminant >= 0).all()
@@ -154,11 +162,15 @@ def rq_spline(
         outputs = root * input_bin_widths + input_supportx
 
         theta_one_minus_theta = root * (1 - root)
-        denominator = input_delta + ((input_derivatives + input_derivatives_plus_one - 2 * input_delta)
-                                     * theta_one_minus_theta)
-        derivative_numerator = input_delta.pow(2) * (input_derivatives_plus_one * root.pow(2)
-                                                     + 2 * input_delta * theta_one_minus_theta
-                                                     + input_derivatives * (1 - root).pow(2))
+        denominator = input_delta + (
+            (input_derivatives + input_derivatives_plus_one - 2 * input_delta)
+            * theta_one_minus_theta
+        )
+        derivative_numerator = input_delta.pow(2) * (
+            input_derivatives_plus_one * root.pow(2)
+            + 2 * input_delta * theta_one_minus_theta
+            + input_derivatives * (1 - root).pow(2)
+        )
         logabsdet = torch.log(derivative_numerator) - 2 * torch.log(denominator)
 
         return outputs, -logabsdet
@@ -166,15 +178,20 @@ def rq_spline(
         theta = (inputs - input_supportx) / input_bin_widths
         theta_one_minus_theta = theta * (1 - theta)
 
-        numerator = input_heights * (input_delta * theta.pow(2)
-                                     + input_derivatives * theta_one_minus_theta)
-        denominator = input_delta + ((input_derivatives + input_derivatives_plus_one - 2 * input_delta)
-                                     * theta_one_minus_theta)
+        numerator = input_heights * (
+            input_delta * theta.pow(2) + input_derivatives * theta_one_minus_theta
+        )
+        denominator = input_delta + (
+            (input_derivatives + input_derivatives_plus_one - 2 * input_delta)
+            * theta_one_minus_theta
+        )
         outputs = input_supporty + numerator / denominator
 
-        derivative_numerator = input_delta.pow(2) * (input_derivatives_plus_one * theta.pow(2)
-                                                     + 2 * input_delta * theta_one_minus_theta
-                                                     + input_derivatives * (1 - theta).pow(2))
+        derivative_numerator = input_delta.pow(2) * (
+            input_derivatives_plus_one * theta.pow(2)
+            + 2 * input_delta * theta_one_minus_theta
+            + input_derivatives * (1 - theta).pow(2)
+        )
         logabsdet = torch.log(derivative_numerator) - 2 * torch.log(denominator)
 
         return outputs, logabsdet
@@ -182,10 +199,7 @@ def rq_spline(
 
 def searchsorted(bin_locations, inputs, eps=1e-6):
     bin_locations[..., -1] += eps
-    return torch.sum(
-        inputs[..., None] >= bin_locations,
-        dim=-1
-    ) - 1
+    return torch.sum(inputs[..., None] >= bin_locations, dim=-1) - 1
 
 
 def select_item(items, index):

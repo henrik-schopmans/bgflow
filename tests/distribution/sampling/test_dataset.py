@@ -1,11 +1,10 @@
-
 import torch
 
 from bgflow import DataSetSampler, DataLoaderSampler
 
 
 def test_dataset_sampler(ctx):
-    data = torch.arange(12).reshape(4,3).to(**ctx)
+    data = torch.arange(12).reshape(4, 3).to(**ctx)
     sampler = DataSetSampler(data).to(**ctx)
     idxs = sampler._idxs.copy()
     # test sampling out of range
@@ -20,20 +19,19 @@ def test_dataset_sampler(ctx):
     # check that rewinding works
     for i in range(3):
         assert torch.allclose(
-            data.flatten(),
-            torch.sort(samples[4*i: 4*(i+1)].flatten())[0]
+            data.flatten(), torch.sort(samples[4 * i : 4 * (i + 1)].flatten())[0]
         )
 
 
 def test_dataset_to_device_sampler(ctx):
-    data = torch.arange(12).reshape(4,3)
+    data = torch.arange(12).reshape(4, 3)
     sampler = DataSetSampler(data).to(**ctx)
     assert sampler.sample(10).device == ctx["device"]
 
 
 def test_multiple_dataset_sampler(ctx):
-    data = torch.arange(12).reshape(4,3).to(**ctx)
-    data2 = torch.arange(8).reshape(4,2).to(**ctx)
+    data = torch.arange(12).reshape(4, 3).to(**ctx)
+    data2 = torch.arange(8).reshape(4, 2).to(**ctx)
     sampler = DataSetSampler(data, data2).to(**ctx)
     samples = sampler.sample(3)
     assert len(samples) == 2
@@ -62,4 +60,3 @@ def test_dataloader_sampler(ctx):
     samples = sampler.sample(4)
     assert samples.shape == (4, 2, 2)
     assert samples.device == ctx["device"]
-

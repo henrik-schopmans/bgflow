@@ -29,7 +29,11 @@ import dataclasses
 from typing import Sequence
 from .base import Sampler
 from ...utils.types import pack_tensor_in_tuple
-from ._iterative_helpers import AbstractSamplerState, default_set_samples_hook, default_extract_sample_hook
+from ._iterative_helpers import (
+    AbstractSamplerState,
+    default_set_samples_hook,
+    default_extract_sample_hook,
+)
 
 __all__ = ["SamplerState", "IterativeSampler", "SamplerStep"]
 
@@ -85,9 +89,15 @@ class SamplerState(AbstractSamplerState):
     forces_up_to_date : bool, optional
 
     """
+
     _tuple_kwargs = ["samples", "velocities", "forces", "box_vectors"]
 
-    def __init__(self, dataclass=_SamplerStateData, set_samples_hook=default_set_samples_hook, **kwargs):
+    def __init__(
+        self,
+        dataclass=_SamplerStateData,
+        set_samples_hook=default_set_samples_hook,
+        **kwargs,
+    ):
         self._dataclass = dataclass
         self.set_samples_hook = set_samples_hook
         kwargs_with_tuples = dict()
@@ -113,7 +123,9 @@ class SamplerState(AbstractSamplerState):
         data = {**self.as_dict(), **kwargs}
         if "samples" in kwargs:
             data["samples"] = self.set_samples_hook(data["samples"])
-        return SamplerState(dataclass=self._dataclass, set_samples_hook=self.set_samples_hook, **data)
+        return SamplerState(
+            dataclass=self._dataclass, set_samples_hook=self.set_samples_hook, **data
+        )
 
 
 class IterativeSampler(Sampler, torch.utils.data.Dataset):
@@ -143,16 +155,17 @@ class IterativeSampler(Sampler, torch.utils.data.Dataset):
     The class implements the interface of an iterable-style torch dataset
     and can thus be used within a torch DataLoader.
     """
+
     def __init__(
-            self,
-            sampler_state,
-            sampler_steps,
-            stride=1,
-            n_burnin=0,
-            max_iterations=None,
-            extract_sample_hook=default_extract_sample_hook,
-            progress_bar=lambda x: x,
-            **kwargs
+        self,
+        sampler_state,
+        sampler_steps,
+        stride=1,
+        n_burnin=0,
+        max_iterations=None,
+        extract_sample_hook=default_extract_sample_hook,
+        progress_bar=lambda x: x,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         if isinstance(sampler_state, torch.Tensor):
@@ -204,6 +217,7 @@ class SamplerStep(torch.nn.Module):
     n_steps: int
         The number of steps taken per `forward` call.
     """
+
     def __init__(self, n_steps=1):
         super().__init__()
         self._n_steps = n_steps
@@ -215,4 +229,3 @@ class SamplerStep(torch.nn.Module):
         for _ in range(self._n_steps):
             state = self._step(state)
         return state
-

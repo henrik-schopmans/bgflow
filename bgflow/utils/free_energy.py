@@ -1,4 +1,3 @@
-
 import io
 import warnings
 import torch
@@ -11,13 +10,13 @@ __all__ = ["bennett_acceptance_ratio"]
 
 
 def bennett_acceptance_ratio(
-        forward_work: torch.Tensor,
-        reverse_work: torch.Tensor,
-        compute_uncertainty: bool = True,
-        implementation: str = "torch",
-        maximum_iterations: int = 500,
-        relative_tolerance: float = 1e-12,
-        warn: bool = False
+    forward_work: torch.Tensor,
+    reverse_work: torch.Tensor,
+    compute_uncertainty: bool = True,
+    implementation: str = "torch",
+    maximum_iterations: int = 500,
+    relative_tolerance: float = 1e-12,
+    warn: bool = False,
 ):
     """Compute the free energy difference DF_{0 -> 1} between two thermodynamic ensembles
     with energies u0 and u1 using the Bennett acceptance ratio method.
@@ -52,23 +51,33 @@ def bennett_acceptance_ratio(
     """
     implementations = {
         "torch": _bennett_acceptance_ratio_torch,
-        "pymbar": _bennett_acceptance_ratio_pymbar
+        "pymbar": _bennett_acceptance_ratio_pymbar,
     }
     delta_f, uncertainty = implementations[implementation](
         forward_work,
         reverse_work,
         compute_uncertainty=compute_uncertainty,
         maximum_iterations=maximum_iterations,
-        relative_tolerance=relative_tolerance
+        relative_tolerance=relative_tolerance,
     )
     if torch.isnan(delta_f) and warn:
-        warnings.warn("BAR could not compute free energy differences due to poor overlap. Returns nan.", UserWarning)
+        warnings.warn(
+            "BAR could not compute free energy differences due to poor overlap. Returns nan.",
+            UserWarning,
+        )
     return delta_f, uncertainty
 
 
-def _bennett_acceptance_ratio_pymbar(forward_work, reverse_work, compute_uncertainty=True, maximum_iterations=500, relative_tolerance=1e-12):
+def _bennett_acceptance_ratio_pymbar(
+    forward_work,
+    reverse_work,
+    compute_uncertainty=True,
+    maximum_iterations=500,
+    relative_tolerance=1e-12,
+):
     """pymbar reference implementation"""
     import pymbar
+
     ctx = {"device": forward_work.device, "dtype": forward_work.dtype}
     f = io.StringIO()
     with redirect_stdout(f):
@@ -78,7 +87,7 @@ def _bennett_acceptance_ratio_pymbar(forward_work, reverse_work, compute_uncerta
             return_dict=False,
             compute_uncertainty=compute_uncertainty,
             maximum_iterations=maximum_iterations,
-            relative_tolerance=relative_tolerance
+            relative_tolerance=relative_tolerance,
         )
 
     if "poor overlap" in f.getvalue() or (compute_uncertainty and np.isnan(result[1])):
@@ -89,14 +98,20 @@ def _bennett_acceptance_ratio_pymbar(forward_work, reverse_work, compute_uncerta
         return torch.tensor(result, **ctx), None
 
 
-def _bennett_acceptance_ratio_torch(forward_work, reverse_work, compute_uncertainty=True, maximum_iterations=500, relative_tolerance=1e-12):
+def _bennett_acceptance_ratio_torch(
+    forward_work,
+    reverse_work,
+    compute_uncertainty=True,
+    maximum_iterations=500,
+    relative_tolerance=1e-12,
+):
     """native implementation in pytorch"""
     estimate, uncertainty = _bar(
         forward_work,
         reverse_work,
         compute_uncertainty=compute_uncertainty,
         maximum_iterations=maximum_iterations,
-        relative_tolerance=relative_tolerance
+        relative_tolerance=relative_tolerance,
     )
     return estimate, uncertainty
 
@@ -111,13 +126,15 @@ def _bar_zero(forward_work, reverse_work, delta_f):
     exp_arg_forward = log_count + forward_work - delta_f
     max_arg_forward = torch.clamp(exp_arg_forward, min=0.0, max=1e10)
     log_f_forward = -max_arg_forward - torch.log(
-        torch.exp(-max_arg_forward) + torch.exp(exp_arg_forward - max_arg_forward))
+        torch.exp(-max_arg_forward) + torch.exp(exp_arg_forward - max_arg_forward)
+    )
     log_numerator = torch.logsumexp(log_f_forward, dim=0)
 
     exp_arg_reverse = -(log_count - reverse_work - delta_f)
     max_arg_reverse = torch.clamp(exp_arg_reverse, min=0.0, max=1e10)
     log_f_reverse = -max_arg_reverse - torch.log(
-        torch.exp(-max_arg_reverse) + torch.exp(exp_arg_reverse - max_arg_reverse))
+        torch.exp(-max_arg_reverse) + torch.exp(exp_arg_reverse - max_arg_reverse)
+    )
     log_denominator = torch.logsumexp(log_f_reverse, dim=0)
     return log_numerator - log_denominator
 
@@ -128,7 +145,13 @@ def _one_sided_reweighting(work):
     return delta_f
 
 
-def _bar(forward_work, reverse_work, compute_uncertainty=True, maximum_iterations=500, relative_tolerance=1e-8):
+def _bar(
+    forward_work,
+    reverse_work,
+    compute_uncertainty=True,
+    maximum_iterations=500,
+    relative_tolerance=1e-8,
+):
     """Bennett Acceptance Ratio; adapted from pymbar"""
 
     forward_work = forward_work.flatten()
@@ -141,14 +164,20 @@ def _bar(forward_work, reverse_work, compute_uncertainty=True, maximum_iteration
 
     while f_upper_bound * f_lower_bound > 0:
         f_average = (upper_bound + lower_bound) / 2
-        upper_bound = upper_bound - torch.clamp((upper_bound - f_average).abs(), min=0.1, max=1e10)
-        lower_bound = lower_bound + torch.clamp((lower_bound - f_average).abs(), min=0.1, max=1e10)
+        upper_bound = upper_bound - torch.clamp(
+            (upper_bound - f_average).abs(), min=0.1, max=1e10
+        )
+        lower_bound = lower_bound + torch.clamp(
+            (lower_bound - f_average).abs(), min=0.1, max=1e10
+        )
         f_upper_bound = _bar_zero(forward_work, reverse_work, upper_bound)
         f_lower_bound = _bar_zero(forward_work, reverse_work, lower_bound)
 
     delta_f_old = np.infty
     for iterations in range(maximum_iterations):
-        delta_f = upper_bound - f_upper_bound * (upper_bound - lower_bound) / (f_upper_bound - f_lower_bound)
+        delta_f = upper_bound - f_upper_bound * (upper_bound - lower_bound) / (
+            f_upper_bound - f_lower_bound
+        )
         f_new = _bar_zero(forward_work, reverse_work, delta_f)
         if f_upper_bound * f_new < 0.0:
             lower_bound = delta_f
@@ -157,8 +186,10 @@ def _bar(forward_work, reverse_work, compute_uncertainty=True, maximum_iteration
             upper_bound = delta_f
             f_upper_bound = f_new
         else:
-            return torch.tensor(np.nan).to(forward_work), torch.tensor(np.nan).to(forward_work)
-            #raise Exception("Cannot determine Free energy")
+            return torch.tensor(np.nan).to(forward_work), torch.tensor(np.nan).to(
+                forward_work
+            )
+            # raise Exception("Cannot determine Free energy")
 
         relative_change = (delta_f - delta_f_old).abs() / delta_f
         if relative_change < relative_tolerance:
@@ -174,16 +205,16 @@ def _bar(forward_work, reverse_work, compute_uncertainty=True, maximum_iteration
     # Compute log ratio of forward and reverse counts.
     M = np.log(n_forward / n_reverse)
     C = M - delta_f
-    exp_arg_f = (forward_work + C)
+    exp_arg_f = forward_work + C
     max_arg_f = exp_arg_f.max()
-    log_f_f = - torch.log(torch.exp(-max_arg_f) + torch.exp(exp_arg_f - max_arg_f))
+    log_f_f = -torch.log(torch.exp(-max_arg_f) + torch.exp(exp_arg_f - max_arg_f))
     assert len(log_f_f.shape) == 1
     af_f = torch.exp(torch.logsumexp(log_f_f, dim=-1) - max_arg_f) / n_forward
 
     # fR = 1 / (1 + np.exp(w_R - C)), but we need to handle overflows
     exp_arg_r = reverse_work - C
     max_arg_r = exp_arg_r.max()
-    log_fR = - torch.log(torch.exp(-max_arg_r) + torch.exp(exp_arg_r - max_arg_r))
+    log_fR = -torch.log(torch.exp(-max_arg_r) + torch.exp(exp_arg_r - max_arg_r))
     afR = torch.exp(torch.logsumexp(log_fR, dim=-1) - max_arg_r) / n_reverse
 
     afF2 = torch.exp(torch.logsumexp(2 * log_f_f, dim=-1) - 2 * max_arg_f) / n_forward
@@ -191,7 +222,7 @@ def _bar(forward_work, reverse_work, compute_uncertainty=True, maximum_iteration
 
     nrat = (n_forward + n_reverse) / (n_forward * n_reverse)  # same for both methods
 
-    variance = (afF2 / af_f ** 2) / n_forward + (afR2 / afR ** 2) / n_reverse - nrat
+    variance = (afF2 / af_f**2) / n_forward + (afR2 / afR**2) / n_reverse - nrat
     d_delta_f = variance.sqrt()
 
     return delta_f, d_delta_f

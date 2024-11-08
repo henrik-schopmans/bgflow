@@ -1,5 +1,6 @@
 """Wrapper around ASE (atomic simulation environment)
 """
+
 __all__ = ["ASEBridge", "ASEEnergy"]
 
 
@@ -26,12 +27,8 @@ class ASEBridge(_Bridge):
     Requires the ase package (installable with `conda install -c conda-forge ase`).
 
     """
-    def __init__(
-            self,
-            atoms,
-            temperature: float,
-            err_handling: str = "warning"
-    ):
+
+    def __init__(self, atoms, temperature: float, err_handling: str = "warning"):
         super().__init__()
         assert hasattr(atoms, "calc")
         self.atoms = atoms
@@ -43,12 +40,13 @@ class ASEBridge(_Bridge):
         return len(self.atoms)
 
     def _evaluate_single(
-            self,
-            positions: torch.Tensor,
-            evaluate_force=True,
-            evaluate_energy=True,
+        self,
+        positions: torch.Tensor,
+        evaluate_force=True,
+        evaluate_energy=True,
     ):
         from ase.units import kB, nm
+
         kbt = kB * self.temperature
         energy, force = None, None
         try:
@@ -60,10 +58,12 @@ class ASEBridge(_Bridge):
             assert not np.isnan(energy)
             assert not np.isnan(force).any()
         except AssertionError as e:
-            force[np.isnan(force)] = 0.
+            force[np.isnan(force)] = 0.0
             energy = np.infty
             if self.err_handling == "warning":
-                warnings.warn("Found nan in ase force or energy. Returning infinite energy and zero force.")
+                warnings.warn(
+                    "Found nan in ase force or energy. Returning infinite energy and zero force."
+                )
             elif self.err_handling == "error":
                 raise e
         return energy, force
@@ -95,4 +95,5 @@ class ASEEnergy(_BridgeEnergy):
         In this case, the energy call expects positions of shape (*batch_shape, n_atoms, 3).
         Otherwise, it expects positions of shape (*batch_shape, n_atoms * 3).
     """
+
     pass

@@ -1,4 +1,3 @@
-
 import numpy as np
 import torch
 from .base import Sampler
@@ -10,6 +9,7 @@ __all__ = ["DataLoaderSampler", "DataSetSampler"]
 
 class _ToDeviceSampler(Sampler):
     """A sampler that can move data between devices and data types"""
+
     def __init__(self, device, dtype, return_hook=lambda x: x, **kwargs):
         super().__init__(return_hook=return_hook, **kwargs)
         # context dummy tensor to store the device and data type;
@@ -40,6 +40,7 @@ class DataLoaderSampler(_ToDeviceSampler):
     -----
     Only implemented for dataloader.batch_size == n_samples
     """
+
     def __init__(self, dataloader, device, dtype, return_hook=lambda x: x):
         super().__init__(device=device, dtype=dtype, return_hook=return_hook)
         self._dataloader = dataloader
@@ -47,7 +48,9 @@ class DataLoaderSampler(_ToDeviceSampler):
 
     def _sample(self, n_samples, *args, **kwargs):
         if n_samples != self._dataloader.batch_size:
-            raise ValueError("DataLoaderSampler only implemented for batch_size == n_samples")
+            raise ValueError(
+                "DataLoaderSampler only implemented for batch_size == n_samples"
+            )
         samples = next(self._iterator)
         return unpack_tensor_tuple(samples)
 
@@ -71,7 +74,15 @@ class DataSetSampler(_ToDeviceSampler, torch.utils.data.Dataset):
     data : list[torch.Tensor]
         The data set from which to draw samples.
     """
-    def __init__(self, *data: torch.Tensor, shuffle=True, device=None, dtype=None, return_hook=lambda x: x):
+
+    def __init__(
+        self,
+        *data: torch.Tensor,
+        shuffle=True,
+        device=None,
+        dtype=None,
+        return_hook=lambda x: x
+    ):
         device = data[0].device if device is None else device
         dtype = data[0].dtype if dtype is None else dtype
         super().__init__(device=device, dtype=dtype, return_hook=return_hook)
@@ -95,12 +106,12 @@ class DataSetSampler(_ToDeviceSampler, torch.utils.data.Dataset):
     def _sample(self, n_samples: int, *args, **kwargs):
         samples = [torch.tensor([]).to(self.data[0]) for _ in self.data]
         if self._current_index + n_samples < len(self.data[0]):
-            idxs = self._idxs[self._current_index:self._current_index + n_samples]
+            idxs = self._idxs[self._current_index : self._current_index + n_samples]
             self._current_index += n_samples
             for i in range(len(self.data)):
                 samples[i] = torch.cat([samples[i], self.data[i][idxs]], dim=0)
         else:
-            idxs = self._idxs[self._current_index:]
+            idxs = self._idxs[self._current_index :]
             for i in range(len(self.data)):
                 samples[i] = torch.cat([samples[i], self.data[i][idxs]], dim=0)
             # reset

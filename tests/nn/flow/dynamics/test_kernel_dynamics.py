@@ -24,12 +24,18 @@ def test_kernel_dynamics(n_particles, n_dimensions, use_checkpoints, device):
     mus_time = torch.linspace(0, 1, 5).to(device)
     gammas_time = 0.3 * torch.ones(len(mus_time))
 
-    kernel_dynamics = KernelDynamics(n_particles, n_dimensions, mus, gammas, optimize_d_gammas=True,
-                                     optimize_t_gammas=True, mus_time=mus_time, gammas_time=gammas_time)
+    kernel_dynamics = KernelDynamics(
+        n_particles,
+        n_dimensions,
+        mus,
+        gammas,
+        optimize_d_gammas=True,
+        optimize_t_gammas=True,
+        mus_time=mus_time,
+        gammas_time=gammas_time,
+    )
 
-    flow = DiffEqFlow(
-        dynamics=kernel_dynamics
-    ).to(device)
+    flow = DiffEqFlow(dynamics=kernel_dynamics).to(device)
 
     if not use_checkpoints:
         pytest.importorskip("torchdiffeq")
@@ -46,10 +52,7 @@ def test_kernel_dynamics(n_particles, n_dimensions, use_checkpoints, device):
     if use_checkpoints:
         pytest.importorskip("anode")
         flow._use_checkpoints = True
-        options = {
-            "Nt": 20,
-            "method": "RK4"
-        }
+        options = {"Nt": 20, "method": "RK4"}
         flow._kwargs = options
 
         samples, dlogp = flow(latent)
@@ -74,13 +77,20 @@ def test_kernel_dynamics_trace(n_particles, n_dimensions):
     mus_time = torch.linspace(0, 1, 5)
     gammas_time = 0.3 * torch.ones(len(mus_time))
 
-    kernel_dynamics = KernelDynamics(n_particles, n_dimensions, mus, gammas, mus_time=mus_time, gammas_time=gammas_time)
+    kernel_dynamics = KernelDynamics(
+        n_particles,
+        n_dimensions,
+        mus,
+        gammas,
+        mus_time=mus_time,
+        gammas_time=gammas_time,
+    )
     x = torch.Tensor(1, n_particles * n_dimensions).normal_().requires_grad_(True)
-    y, trace = kernel_dynamics(1., x)
+    y, trace = kernel_dynamics(1.0, x)
     brute_force_trace = brute_force_jacobian_trace(y, x)
 
     # The kernel dynamics outputs the negative trace
     assert torch.allclose(trace.sum(), -brute_force_trace[0], atol=1e-4)
 
     # test kernel dynamics without trace
-    kernel_dynamics(1., x, compute_divergence=False)
+    kernel_dynamics(1.0, x, compute_divergence=False)

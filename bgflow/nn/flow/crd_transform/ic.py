@@ -171,7 +171,7 @@ class ReferenceSystemTransformation(Flow):
         x0: torch.Tensor
             origin of the system
         orientation: torch.Tensor
-            if orientation is "basis" returns [3,3] matrix 
+            if orientation is "basis" returns [3,3] matrix
             if orientation is "euler" returns tuple with three Euler angles (alpha, beta, gamma)
                 their range are in [0, pi] if unnormalized and [0, 1] if normalized
         d01: torch.Tensor
@@ -204,7 +204,6 @@ class ReferenceSystemTransformation(Flow):
         orientation = torch.cat([alpha, beta, gamma], dim=-1)
 
         return (x0, orientation, d01, d12, a012, dlogp)
-
 
     def _inverse(self, x0, orientation, d01, d12, a012, *args, **kwargs):
         """
