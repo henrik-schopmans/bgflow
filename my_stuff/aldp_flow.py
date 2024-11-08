@@ -1,36 +1,29 @@
-import notebooks.alanine_dipeptide_basics as basic
+from bgmol.systems.ala2 import AlanineDipeptideImplicit
 from bgflow import TORSIONS, BONDS, ANGLES
 import bgflow as bg
 import torch
 import bgmol
 
-coordinate_trafo = bg.GlobalInternalCoordinateTransformation(z_matrix=bgmol.systems.ala2.DEFAULT_GLOBAL_Z_MATRIX, enforce_boundaries=True, normalize_angles=True)
+system = AlanineDipeptideImplicit(constraints=None, hydrogenMass=None)
 
-shape_info = bg.ShapeDictionary.from_coordinate_transform(
-    coordinate_trafo
+coordinate_trafo = bg.GlobalInternalCoordinateTransformation(
+    z_matrix=bgmol.systems.ala2.DEFAULT_GLOBAL_Z_MATRIX,
+    enforce_boundaries=True,
+    normalize_angles=True,
 )
+
+shape_info = bg.ShapeDictionary.from_coordinate_transform(coordinate_trafo)
 print(shape_info)
 
 builder = bg.BoltzmannGeneratorBuilder(
-    shape_info, 
-    target=basic.target_energy, 
-    device=basic.device, 
-    dtype=basic.dtype
+    shape_info, target=system.energy_model, device="cuda", dtype=torch.float32
 )
 
-if False:
-    for i in range(4):
-        builder.add_condition(TORSIONS, on=ANGLES)
-        builder.add_condition(ANGLES, on=TORSIONS)
-    for i in range(2):
-        builder.add_condition(BONDS, on=ANGLES)
-        builder.add_condition(ANGLES, on=BONDS)
-else:
-    n_couplings = 4
-    for _ in range(n_couplings):
-        builder.add_condition(TORSIONS, on=(ANGLES, BONDS))
-        builder.add_condition(ANGLES, on=(TORSIONS, BONDS))
-        builder.add_condition(BONDS, on=(TORSIONS, ANGLES))
+n_couplings = 4
+for _ in range(n_couplings):
+    builder.add_condition(TORSIONS, on=(ANGLES, BONDS))
+    builder.add_condition(ANGLES, on=(TORSIONS, BONDS))
+    builder.add_condition(BONDS, on=(TORSIONS, ANGLES))
 
 generator = builder.build_generator()
 
@@ -46,13 +39,15 @@ print([item.shape for item in samples])
 a = torch.rand(1000, 21, device="cuda")
 b = torch.rand(1000, 20, device="cuda")
 c = torch.rand(1000, 19, device="cuda")
-xs = (a,b,c)
+xs = (a, b, c)
 
-zs = generator._flow.forward(*xs, inverse=True) # This additionally also outputs the log determinant
+zs = generator._flow.forward(
+    *xs, inverse=True
+)  # This additionally also outputs the log determinant
 
 print([item.shape for item in zs])
 
 xs = generator._flow.forward(*zs[:-1])
 print([item.shape for item in xs])
 
-print(xs[0][0:5,0:5])
+print(xs[0][0:5, 0:5])
