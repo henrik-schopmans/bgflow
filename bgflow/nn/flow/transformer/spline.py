@@ -85,7 +85,7 @@ class ConditionalSplineTransformer(Transformer):
                 UserWarning,
             )
 
-    def _compute_params(self, x, y_dim):
+    def _compute_params(self, x, y_dim, context=None):
         """Compute widths, heights, and slopes from x through the params_net.
 
         Parameters
@@ -107,7 +107,8 @@ class ConditionalSplineTransformer(Transformer):
             unnormalized slopes for the monotonic spline interpolation
             shape (... , y_dim, n_bins + 1)
         """
-        params = self._params_net(x)
+
+        params = self._params_net(x, context=context)
         # assume that all but the last dim of the params tensor are batch dims
         batch_shape = params.shape[:-1]
         n_bins = params.shape[-1] // (y_dim * 3)
@@ -131,11 +132,11 @@ class ConditionalSplineTransformer(Transformer):
         slopes[..., self._noncircular_indices(y_dim), -1] = noncircular_slopes
         return widths, heights, slopes
 
-    def _forward(self, x, y, *args, **kwargs):
+    def _forward(self, x, y, context=None):
         from nflows.transforms.splines import rational_quadratic_spline
         from nflows.transforms.base import InputOutsideDomain
 
-        widths, heights, slopes = self._compute_params(x, y.shape[-1])
+        widths, heights, slopes = self._compute_params(x, y.shape[-1], context=context)
         rqs = lambda y: rational_quadratic_spline(
             y,
             widths,
@@ -162,11 +163,11 @@ class ConditionalSplineTransformer(Transformer):
 
         return z, dlogp.sum(dim=-1, keepdim=True)
 
-    def _inverse(self, x, y, *args, **kwargs):
+    def _inverse(self, x, y, context=None):
         from nflows.transforms.splines import rational_quadratic_spline
         from nflows.transforms.base import InputOutsideDomain
 
-        widths, heights, slopes = self._compute_params(x, y.shape[-1])
+        widths, heights, slopes = self._compute_params(x, y.shape[-1], context=context)
         rqs = lambda y: rational_quadratic_spline(
             y,
             widths,

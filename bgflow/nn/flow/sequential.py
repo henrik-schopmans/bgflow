@@ -46,6 +46,7 @@ class SequentialFlow(Flow):
             Total volume change as a result of the transformation.
             Corresponds to the log determinant of the Jacobian matrix.
         """
+
         dlogp = 0.0
         blocks = self._blocks
         if inverse:

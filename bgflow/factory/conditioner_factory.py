@@ -1,12 +1,11 @@
 import warnings
-
 import torch
 from ..nn.periodic import WrapPeriodic
 import torch.nn as nn
 import numpy as np
 import traceback
 import bgflow as bg
-from normflows.nets.resnet import ResidualNet
+from bgflow.nn.resnet import ResidualNet
 from torch.utils.checkpoint import checkpoint
 
 __all__ = ["make_conditioners"]
@@ -66,13 +65,11 @@ def make_conditioners(
         what=what,
         shape_info=shape_info,
         transformer_kwargs=transformer_kwargs,
-        **kwargs
+        **kwargs,
     )
     dim_in = shape_info.dim_noncircular(on) + 2 * shape_info.dim_circular(on)
     conditioners = {}
     for name, dim in dim_out.items():
-        kwargs["shape_info"] = shape_info
-        kwargs["on"] = on
         conditioner = net_factory(dim_in, dim, **kwargs)
         if shape_info.dim_circular(on) > 0:
             conditioner = WrapPeriodic(
@@ -84,18 +81,29 @@ def make_conditioners(
 
 
 def _make_dense_conditioner(
-    dim_in, dim_out, hidden=(128, 128), activation=torch.nn.SiLU(), **kwargs
+    dim_in,
+    dim_out,
+    context_dims=0,
+    hidden=(128, 128),
+    activation=torch.nn.SiLU(),
 ):
+    assert (
+        context_dims == 0
+    ), "Dense conditioner does currently not support context features"
+
     return bg.DenseNet([dim_in, *hidden, dim_out], activation=activation)
 
 
 def _make_residual_conditioner(
-    dim_in, dim_out, context_features=0, init_identity=True, **kwargs
+    dim_in,
+    dim_out,
+    context_dims=0,
+    init_identity=True,
 ):
     net = ResidualNet(
         in_features=dim_in,
         out_features=dim_out,
-        context_features=context_features if context_features > 0 else None,
+        context_features=context_dims if context_dims > 0 else None,
         hidden_features=256,
         num_blocks=1,
         activation=nn.ReLU(),
@@ -265,11 +273,18 @@ class GNNConditioner(torch.nn.Module):
 
 
 def _make_GNN_conditioner(
-    dim_in, dim_out, hidden=(128, 128), activation=torch.nn.SiLU(), **kwargs
+    dim_in,
+    dim_out,
+    context_dims=0,
+    hidden=(128, 128),
+    activation=torch.nn.SiLU(),
+    **kwargs
 ):
     """
     build an nequip GNN and plug it into the Transformer as conditioner network.
     """
+
+    assert context_dims == 0, "GNN conditioner does not support context features"
 
     GNN_conditioner = GNNConditioner(dim_in, dim_out, hidden, activation, **kwargs)
     return GNN_conditioner
@@ -308,5 +323,4 @@ def _mixture_out_dims(
 CONDITIONER_OUT_DIMS = {
     bg.ConditionalSplineTransformer: _spline_out_dims,
     bg.AffineTransformer: _affine_out_dims,
-    # TODO bg.MixtureCDFTransformer: _mixture_out_dims
 }

@@ -55,6 +55,8 @@ generator.flow.forward(
     inverse=True,
 )
 
+generator.sample(1000, context=torch.randn(1000, 1, device="cuda"))
+
 system.energy_model.energy(torch.randn(10000, 66, device="cuda"))
 system.energy_model.energy(torch.randn(10000, 66, device="cuda"))
 

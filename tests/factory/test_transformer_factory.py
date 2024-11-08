@@ -20,7 +20,6 @@ from bgflow import (
     [
         ConditionalSplineTransformer,
         AffineTransformer,
-        # TODO: MixtureCDFTransformer
     ],
 )
 def test_transformers(crd_trafo, transformer_type):

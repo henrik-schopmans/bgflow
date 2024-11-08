@@ -28,14 +28,14 @@ class WrapPeriodic(torch.nn.Module):
         self.right = right
         self.indices = indices
 
-    def forward(self, x):
+    def forward(self, x, context=None):
         indices = np.arange(x.shape[-1])[self.indices]
         other_indices = np.setdiff1d(np.arange(x.shape[-1]), indices)
         y = x[..., indices]
         cos = torch.cos(2 * np.pi * (y - self.left) / (self.right - self.left))
         sin = torch.sin(2 * np.pi * (y - self.left) / (self.right - self.left))
         x = torch.cat([cos, sin, x[..., other_indices]], dim=-1)
-        return self.net.forward(x)
+        return self.net.forward(x, context=context)
 
 
 class WrapDistances(torch.nn.Module):
@@ -48,7 +48,7 @@ class WrapDistances(torch.nn.Module):
         self.right = right
         self.indices = indices
 
-    def forward(self, x):
+    def forward(self, x, context=None):
         indices = np.arange(x.shape[-1])[self.indices]
         other_indices = np.setdiff1d(np.arange(x.shape[-1]), indices)
         y = x[..., indices].view(x.shape[0], -1, 3)
@@ -57,4 +57,4 @@ class WrapDistances(torch.nn.Module):
 
         distances = distance_matrix[mask].view(x.shape[0], -1)
         x = torch.cat([x[..., other_indices], distances], dim=-1)
-        return self.net.forward(x)
+        return self.net.forward(x, context=context)

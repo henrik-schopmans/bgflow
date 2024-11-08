@@ -19,13 +19,14 @@ def unnormalized_kl_div(
     flow,
     target,
     n_samples,
-    temperature=1.0,
+    context=None,
+    temperature=None,
     energy_regularizer_fn: callable = None,
     return_x: bool = False,
 ):
-    z = prior.sample(n_samples, temperature=temperature)
+    z = prior.sample(n_samples)
     z = pack_tensor_in_tuple(z)
-    *x, dlogp = flow(*z, temperature=temperature)
+    *x, dlogp = flow(*z, context=context)
 
     energy = target.energy(*x, temperature=temperature).view(-1, 1)
 
@@ -38,20 +39,29 @@ def unnormalized_kl_div(
         return energy - dlogp
 
 
-def unormalized_nll(prior, flow, *x, temperature=1.0):
-    *z, neg_dlogp = flow(*x, inverse=True, temperature=temperature)
-    return prior.energy(*z, temperature=temperature) - neg_dlogp
+def unormalized_nll(prior, flow, *x, context=None):
+    *z, neg_dlogp = flow(*x, inverse=True, context=context)
+    return prior.energy(*z) - neg_dlogp
 
 
-def log_weights(*x, prior, flow, target, temperature=1.0, normalize=True):
-    *z, neg_dlogp = flow(*x, inverse=True, temperature=temperature)
+def log_weights(
+    *x, context=None, prior, flow, target, temperature=None, normalize=True
+):
+    *z, neg_dlogp = flow(*x, context=context, inverse=True)
     return log_weights_given_latent(
         x, z, -neg_dlogp, prior, target, temperature=temperature, normalize=normalize
     )
 
 
 def log_weights_from_samples(
-    prior, flow, target, num_samples, batch_size, temperature=1.0, normalize=True
+    prior,
+    flow,
+    target,
+    num_samples,
+    batch_size,
+    context=None,
+    temperature=None,
+    normalize=True,
 ):
     """sample a bunch of datapoints, and compute their log_weights"""
 
@@ -62,7 +72,7 @@ def log_weights_from_samples(
         for batch in range(num_samples // batch_size):
             z_batch = prior.sample(batch_size)
             z.append(z_batch)
-            x_batch, dlogp_batch = flow(*z_batch)
+            x_batch, dlogp_batch = flow(*z_batch, context=context)
             x.append(x_batch)
             dlogp.append(dlogp_batch)
         z_cat = tuple(
@@ -77,15 +87,11 @@ def log_weights_from_samples(
 
 
 def log_weights_given_latent(
-    x, z, dlogp, prior, target, temperature=1.0, normalize=True
+    x, z, dlogp, prior, target, temperature=None, normalize=True
 ):
     x = pack_tensor_in_tuple(x)
     z = pack_tensor_in_tuple(z)
-    logw = (
-        prior.energy(*z, temperature=temperature)
-        + dlogp
-        - target.energy(*x, temperature=temperature)
-    )
+    logw = prior.energy(*z) + dlogp - target.energy(*x, temperature=temperature)
     if normalize:
         logw = logw - torch.logsumexp(logw, dim=0)
     return logw.view(-1)
@@ -135,16 +141,17 @@ class BoltzmannGenerator(Energy, Sampler):
     def sample(
         self,
         n_samples,
-        temperature=1.0,
+        context=None,
+        temperature=None,
         with_latent=False,
         with_dlogp=False,
         with_energy=False,
         with_log_weights=False,
         with_weights=False,
     ):
-        z = self._prior.sample(n_samples, temperature=temperature)
+        z = self._prior.sample(n_samples)
         z = pack_tensor_in_tuple(z)
-        *x, dlogp = self._flow(*z, temperature=temperature)
+        *x, dlogp = self._flow(*z, context=context)
         results = list(x)
 
         if with_latent:
@@ -152,7 +159,7 @@ class BoltzmannGenerator(Energy, Sampler):
         if with_dlogp:
             results.append(dlogp)
         if with_energy or with_log_weights or with_weights:
-            bg_energy = self._prior.energy(*z, temperature=temperature) + dlogp
+            bg_energy = self._prior.energy(*z) + dlogp
             if with_energy:
                 results.append(bg_energy)
             if with_log_weights or with_weights:
@@ -168,13 +175,19 @@ class BoltzmannGenerator(Energy, Sampler):
         else:
             return results[0]
 
-    def energy(self, *x, temperature=1.0):
-        return unormalized_nll(self._prior, self._flow, *x, temperature=temperature)
+    def energy(self, *x, context=None):
+        return unormalized_nll(
+            self._prior,
+            self._flow,
+            *x,
+            context=context,
+        )
 
     def kldiv(
         self,
         n_samples,
-        temperature=1.0,
+        context=None,
+        temperature=None,
         energy_regularizer_fn: callable = None,
         return_x: bool = False,
     ):
@@ -183,22 +196,24 @@ class BoltzmannGenerator(Energy, Sampler):
             self._flow,
             self._target,
             n_samples,
+            context,
             temperature=temperature,
             energy_regularizer_fn=energy_regularizer_fn,
             return_x=return_x,
         )
 
-    def log_weights(self, *x, temperature=1.0, normalize=True):
+    def log_weights(self, *x, context=None, temperature=None, normalize=True):
         return log_weights(
             *x,
+            context=context,
             prior=self._prior,
             flow=self._flow,
             target=self._target,
             temperature=temperature,
-            normalize=normalize
+            normalize=normalize,
         )
 
-    def log_weights_given_latent(self, x, z, dlogp, temperature=1.0, normalize=True):
+    def log_weights_given_latent(self, x, z, dlogp, temperature=None, normalize=True):
         return log_weights_given_latent(
             x,
             z,

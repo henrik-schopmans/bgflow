@@ -30,7 +30,6 @@ pytestmark = pytest.mark.skipif(
     [
         ConditionalSplineTransformer,
         AffineTransformer,
-        # TODO: MixtureCDFTransformer
     ],
 )
 def test_conditioner_factory_input_dim(transformer_type, crd_trafo):
