@@ -276,6 +276,7 @@ class BoltzmannGeneratorBuilder:
         what: TensorInfo | Sequence[TensorInfo],
         on: TensorInfo | Sequence[TensorInfo],
         add_reverse: bool = False,
+        rng: np.random.Generator | None = None,
         param_groups=tuple(),
         conditioner_type=None,
         transformer_type=None,
@@ -284,7 +285,7 @@ class BoltzmannGeneratorBuilder:
     ):
         """Add a coupling layer, i.e. a transformation of the tensor(s) `what`
         that is conditioned on the tensor(s) `on`. If the channels in `what` and `on`
-        overlap, the overlapping channels are split randomly into two channels.
+        overlap, the overlapping channels are split randomly into two channels (and merged back afterwards).
 
         Parameters
         ----------
@@ -294,6 +295,8 @@ class BoltzmannGeneratorBuilder:
             The tensor(s) on which the transformation is conditioned.
         add_reverse : bool, default=False
             If True, add also the reverse coupling layer (what and on are swapped).
+        rng : np.random.Generator, default=None
+            A random number generator for splitting the overlapping channels.
         **kwargs : Keyword arguments
             Additional keyword arguments for the conditioner factory.
 
@@ -379,9 +382,14 @@ class BoltzmannGeneratorBuilder:
             split2 = what[i]._replace(name=what[i].name + "_split2")
 
             len_split1 = self.current_dims[what[i]][0] // 2
-            split1_indices = np.random.choice(
-                self.current_dims[what[i]][0], len_split1, replace=False
-            )
+            if rng is None:
+                split1_indices = np.random.choice(
+                    self.current_dims[what[i]][0], len_split1, replace=False
+                )
+            else:
+                split1_indices = rng.choice(
+                    self.current_dims[what[i]][0], len_split1, replace=False
+                )
             split2_indices = np.setdiff1d(
                 np.arange(self.current_dims[what[i]][0]), split1_indices
             )
