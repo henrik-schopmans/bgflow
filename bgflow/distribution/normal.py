@@ -178,12 +178,16 @@ class TruncatedNormalDistribution(Energy, Sampler):
         else:
             raise ValueError(f'Unknown sampling method "{sampling_method}"')
 
+        self.sampling_method = sampling_method
+
     @property
     def _sigma(self):
         return torch.exp(self._logsigma)
 
-    def _sample(self, n_samples):
-        return self._sample_with_temperature(n_samples, temperature=1)
+    def _sample(self, n_samples, rand_samples=None):
+        return self._sample_with_temperature(
+            n_samples, temperature=1.0, rand_samples=rand_samples
+        )
 
     def _rejection_sampling(self, n_samples, temperature):
         sigma = self._sigma * np.sqrt(temperature)
@@ -213,15 +217,26 @@ class TruncatedNormalDistribution(Energy, Sampler):
                 break
         return samples
 
-    def _icdf_sampling(self, n_samples, temperature):
+    def _icdf_sampling(self, n_samples, temperature, rand_samples=None):
         sigma = self._sigma * np.sqrt(temperature)
-        u = torch.rand(n_samples, *self.event_shape).to(self._mu)
+
+        if rand_samples is None:
+            u = torch.rand(n_samples, *self.event_shape).to(self._mu)
+        else:
+            u = rand_samples.to(self._mu)
+
         r = (self._cdf_upper_bound - self._cdf_lower_bound) * u + self._cdf_lower_bound
         x = self._standard_normal.icdf(r) * sigma + self._mu
         return x
 
-    def _sample_with_temperature(self, n_samples, temperature):
-        return self._sample_impl(n_samples, temperature)
+    def _sample_with_temperature(self, n_samples, temperature, rand_samples=None):
+
+        if rand_samples is not None:
+            assert (
+                self.sampling_method == "icdf"
+            ), "Supplying rand_samples only supported for icdf"
+
+        return self._sample_impl(n_samples, temperature, rand_samples=rand_samples)
 
     def _energy(self, x):
         """The energy is the same as for a untruncated normal distribution

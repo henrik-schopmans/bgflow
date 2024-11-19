@@ -132,5 +132,17 @@ class UniformDistribution(TorchDistribution):
                 self._delegate.sample(sample_shape=x.shape[:-1])
             )[:, None]
 
-    def _sample_with_temperature(self, n_samples, temperature):
-        return self._sample(n_samples)
+    def _sample_with_temperature(self, n_samples, temperature, rand_samples=None):
+        return self._sample(n_samples, rand_samples=rand_samples)
+
+    def _sample(self, n_samples, rand_samples=None):
+        if rand_samples is None:
+            if isinstance(n_samples, int):
+                return self._delegate.sample(torch.Size([n_samples]))
+            else:
+                return self._delegate.sample(torch.Size(n_samples))
+        else:
+            rand_samples = rand_samples.to(self.base_dist.low)
+            return self.base_dist.low + rand_samples * (
+                self.base_dist.high - self.base_dist.low
+            )

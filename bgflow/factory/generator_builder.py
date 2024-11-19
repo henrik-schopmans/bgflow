@@ -168,7 +168,9 @@ class BoltzmannGeneratorBuilder:
         )
         logger.info(f"BG Builder  :::  ({dimstring})")
 
-    def build_generator(self, zero_parameters=False, check_target=True):
+    def build_generator(
+        self, zero_parameters=False, check_target=True, use_sobol=False
+    ):
         """Build the Boltzmann Generator. The layers are cleared after building.
 
         Parameters
@@ -184,7 +186,7 @@ class BoltzmannGeneratorBuilder:
             The Boltzmann generator.
         """
         generator = BoltzmannGenerator(
-            prior=self.build_prior(),
+            prior=self.build_prior(use_sobol=use_sobol),
             flow=self.build_flow(zero_parameters=zero_parameters),
             target=self.build_target(check_target=check_target),
         )
@@ -214,7 +216,7 @@ class BoltzmannGeneratorBuilder:
                 p.data.zero_()
         return flow
 
-    def build_prior(self):
+    def build_prior(self, use_sobol=False):
         """Build the prior.
 
         Returns
@@ -233,10 +235,8 @@ class BoltzmannGeneratorBuilder:
                 **prior_kwargs,
             )
             priors.append(prior)
-        if len(priors) > 1:
-            return ProductDistribution(priors)
-        else:
-            return priors[0]
+
+        return ProductDistribution(priors, use_sobol=use_sobol)
 
     def build_target(self, check_target=False):
         """Build the target energy.
