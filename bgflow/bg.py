@@ -22,7 +22,7 @@ def unnormalized_kl_div(
     context=None,
     temperature=None,
     energy_regularizer_fn: callable = None,
-    return_x: bool = False,
+    return_energies: bool = False,
 ):
     z = prior.sample(n_samples)
     z = pack_tensor_in_tuple(z)
@@ -33,8 +33,8 @@ def unnormalized_kl_div(
     if energy_regularizer_fn is not None:
         energy = energy_regularizer_fn(energy)
 
-    if return_x:
-        return energy - dlogp, x
+    if return_energies:
+        return energy - dlogp, energy
     else:
         return energy - dlogp
 
@@ -189,7 +189,7 @@ class BoltzmannGenerator(Energy, Sampler):
         context=None,
         temperature=None,
         energy_regularizer_fn: callable = None,
-        return_x: bool = False,
+        return_energies: bool = False,
     ):
         return unnormalized_kl_div(
             self._prior,
@@ -199,7 +199,7 @@ class BoltzmannGenerator(Energy, Sampler):
             context,
             temperature=temperature,
             energy_regularizer_fn=energy_regularizer_fn,
-            return_x=return_x,
+            return_energies=return_energies,
         )
 
     def log_weights(self, *x, context=None, temperature=None, normalize=True):
