@@ -44,8 +44,11 @@ class DenseNet(torch.nn.Module):
 
         self._layers = torch.nn.Sequential(*layers)
 
-    def forward(self, x):
-        return self._layers(x)
+    def forward(self, x, context=None):
+        if context is None:
+            return self._layers(x)
+        else:
+            return self._layers(torch.cat([x, context], dim=-1))
 
 
 class MeanFreeDenseNet(DenseNet):

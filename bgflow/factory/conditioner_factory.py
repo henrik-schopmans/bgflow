@@ -87,11 +87,7 @@ def _make_dense_conditioner(
     hidden=(128, 128),
     activation=torch.nn.SiLU(),
 ):
-    assert (
-        context_dims == 0
-    ), "Dense conditioner does currently not support context features"
-
-    return bg.DenseNet([dim_in, *hidden, dim_out], activation=activation)
+    return bg.DenseNet([dim_in + context_dims, *hidden, dim_out], activation=activation)
 
 
 def _make_residual_conditioner(
@@ -205,7 +201,7 @@ class GNNConditioner(torch.nn.Module):
         elif self.attention_level is not None:
             raise ValueError("unrecognized attention level")
 
-    def forward(self, x):
+    def forward(self, x, context=None):
         if self.use_checkpointing:
             dummy_var = torch.zeros(
                 2, requires_grad=True
@@ -222,7 +218,7 @@ class GNNConditioner(torch.nn.Module):
                     "the forward method was exited, but the GNN buffers have been cleaned up."
                 )
 
-    def _forward(self, x, dummy_var=None):
+    def _forward(self, x, dummy_var=None, context=None):
         x_cart = x[:, self.cart_indices_after_periodic]
         index = torch.ones(x.shape[1], dtype=bool)
         index[self.cart_indices_after_periodic] = False
@@ -284,7 +280,9 @@ def _make_GNN_conditioner(
     build an nequip GNN and plug it into the Transformer as conditioner network.
     """
 
-    assert context_dims == 0, "GNN conditioner does not support context features"
+    assert (
+        context_dims == 0
+    ), "GNN conditioner does not currently support context features"
 
     GNN_conditioner = GNNConditioner(dim_in, dim_out, hidden, activation, **kwargs)
     return GNN_conditioner
