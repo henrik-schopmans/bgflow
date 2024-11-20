@@ -1,14 +1,16 @@
 import logging
 import numpy as np
 import torch
-
+from collections.abc import Callable
 from .base import Flow
 
 logger = logging.getLogger("bgflow")
 
 
 class SequentialFlow(Flow):
-    def __init__(self, blocks):
+    def __init__(
+        self, blocks, context_preprocessor: torch.nn.Module | Callable | None = None
+    ):
         """
         Represents a diffeomorphism that can be computed
         as a discrete finite stack of layers.
@@ -22,6 +24,7 @@ class SequentialFlow(Flow):
         """
         super().__init__()
         self._blocks = torch.nn.ModuleList(blocks)
+        self._context_preprocessor = context_preprocessor
 
     def forward(self, *xs, inverse=False, **kwargs):
         """
@@ -46,6 +49,11 @@ class SequentialFlow(Flow):
             Total volume change as a result of the transformation.
             Corresponds to the log determinant of the Jacobian matrix.
         """
+
+        if self._context_preprocessor is not None:
+            context = kwargs["context"]
+            context = self._context_preprocessor(context)
+            kwargs["context"] = context
 
         dlogp = 0.0
         blocks = self._blocks

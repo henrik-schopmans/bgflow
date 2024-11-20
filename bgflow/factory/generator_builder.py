@@ -36,6 +36,7 @@ from .conditioner_factory import make_conditioners
 from .transformer_factory import make_transformer
 from .distribution_factory import make_distribution
 from .icmarginals import InternalCoordinateMarginals
+from collections.abc import Callable
 
 __all__ = ["BoltzmannGeneratorBuilder"]
 
@@ -169,7 +170,11 @@ class BoltzmannGeneratorBuilder:
         logger.info(f"BG Builder  :::  ({dimstring})")
 
     def build_generator(
-        self, zero_parameters=False, check_target=True, use_sobol=False
+        self,
+        zero_parameters=False,
+        check_target=True,
+        use_sobol=False,
+        context_preprocessor: torch.nn.Module | Callable | None = None,
     ):
         """Build the Boltzmann Generator. The layers are cleared after building.
 
@@ -179,6 +184,10 @@ class BoltzmannGeneratorBuilder:
             Whether the flow should be initialized with all trainable parameters set to zero.
         check_target : bool, optional
             Whether a warning is printed if not all output tensors have target energies.
+        use_sobol : bool, optional
+            Whether to use a Sobol sequence for sampling from the prior.
+        context_preprocessor : torch.nn.Module | Callable | None, optional
+            A module that preprocesses the context before it is passed to the flow layers.
 
         Returns
         -------
@@ -187,26 +196,35 @@ class BoltzmannGeneratorBuilder:
         """
         generator = BoltzmannGenerator(
             prior=self.build_prior(use_sobol=use_sobol),
-            flow=self.build_flow(zero_parameters=zero_parameters),
+            flow=self.build_flow(
+                zero_parameters=zero_parameters,
+                context_preprocessor=context_preprocessor,
+            ),
             target=self.build_target(check_target=check_target),
         )
         self.clear()
         return generator
 
-    def build_flow(self, zero_parameters=False):
+    def build_flow(
+        self,
+        zero_parameters=False,
+        context_preprocessor: torch.nn.Module | Callable | None = None,
+    ):
         """Build the normalizing flow.
 
         Parameters
         ----------
         zero_parameters : bool, optional
             Whether the flow should be initialized with all trainable parameters set to zero.
+        context_preprocessor : torch.nn.Module | Callable | None, optional
+            A module that preprocesses the context before it is passed to the flow layers.
 
         Returns
         -------
         flow : bgflow.nn.flow.sequential.SequentialFlow
             The diffeomorphic transformation.
         """
-        flow = SequentialFlow(self.layers)
+        flow = SequentialFlow(self.layers, context_preprocessor=context_preprocessor)
         if zero_parameters:
             warnings.warn(
                 "Initializing the flow with zeros makes it much less flexible",
