@@ -175,7 +175,7 @@ class BoltzmannGeneratorBuilder:
         check_target=True,
         use_sobol=False,
         context_preprocessor: torch.nn.Module | Callable | None = None,
-    ):
+    ) -> BoltzmannGenerator:
         """Build the Boltzmann Generator. The layers are cleared after building.
 
         Parameters
