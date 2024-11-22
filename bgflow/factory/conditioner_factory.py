@@ -1,7 +1,7 @@
 import warnings
 import torch
 from ..nn.periodic import WrapPeriodic
-import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import traceback
 import bgflow as bg
@@ -95,7 +95,7 @@ def _make_residual_conditioner(
     dim_out,
     context_dims=0,
     init_identity=True,
-    activation=nn.ReLU(),
+    activation=F.relu,
 ):
     net = ResidualNet(
         in_features=dim_in,
