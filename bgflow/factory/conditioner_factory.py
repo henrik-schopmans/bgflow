@@ -95,6 +95,7 @@ def _make_residual_conditioner(
     dim_out,
     context_dims=0,
     init_identity=True,
+    activation=nn.ReLU(),
 ):
     net = ResidualNet(
         in_features=dim_in,
@@ -102,7 +103,7 @@ def _make_residual_conditioner(
         context_features=context_dims if context_dims > 0 else None,
         hidden_features=256,
         num_blocks=1,
-        activation=nn.ReLU(),
+        activation=activation,
         dropout_probability=0,
         use_batch_norm=False,
         preprocessing=None,
