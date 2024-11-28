@@ -78,6 +78,7 @@ class ResidualNet(nn.Module):
         dropout_probability=0.0,
         use_batch_norm=False,
         preprocessing=None,
+        output_gate_fn=None,
     ):
         super().__init__()
         self.hidden_features = hidden_features
@@ -104,6 +105,8 @@ class ResidualNet(nn.Module):
         )
         self.final_layer = nn.Linear(hidden_features, out_features)
 
+        self.output_gate_fn = output_gate_fn
+
     def forward(self, inputs, context=None):
         if self.preprocessing is None:
             temps = inputs
@@ -119,4 +122,8 @@ class ResidualNet(nn.Module):
             temps = block(temps, context=context)
 
         outputs = self.final_layer(temps)
+
+        if self.output_gate_fn is not None:
+            outputs = self.output_gate_fn(outputs, context=context)
+
         return outputs

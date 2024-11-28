@@ -96,6 +96,7 @@ def _make_residual_conditioner(
     context_dims=0,
     init_identity=True,
     activation=F.relu,
+    output_gate_fn=None,
 ):
     net = ResidualNet(
         in_features=dim_in,
@@ -107,6 +108,7 @@ def _make_residual_conditioner(
         dropout_probability=0,
         use_batch_norm=False,
         preprocessing=None,
+        output_gate_fn=output_gate_fn,
     )
 
     if init_identity:
@@ -275,7 +277,6 @@ def _make_GNN_conditioner(
     context_dims=0,
     hidden=(128, 128),
     activation=torch.nn.SiLU(),
-    **kwargs
 ):
     """
     build an nequip GNN and plug it into the Transformer as conditioner network.
@@ -285,7 +286,7 @@ def _make_GNN_conditioner(
         context_dims == 0
     ), "GNN conditioner does not currently support context features"
 
-    GNN_conditioner = GNNConditioner(dim_in, dim_out, hidden, activation, **kwargs)
+    GNN_conditioner = GNNConditioner(dim_in, dim_out, hidden, activation)
     return GNN_conditioner
 
 
