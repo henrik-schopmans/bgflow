@@ -108,6 +108,10 @@ class ResidualNet(nn.Module):
         self.output_gate_fn = output_gate_fn
 
     def forward(self, inputs, context=None):
+
+        if self.context_features is None or self.context_features == 0:
+            context = None
+
         if self.preprocessing is None:
             temps = inputs
         else:
