@@ -394,6 +394,8 @@ class BoltzmannGeneratorBuilder:
         to_be_merged = (
             []
         )  # list of tuples (split1, split2, original) to remember what to merge later
+        to_be_merged_indices = []
+
         for i in overlapping_what_indices:
             # Add a split layer that splits the overlapping fields randomly into two channels
             split1 = what[i]._replace(name=what[i].name + "_split1")
@@ -418,6 +420,7 @@ class BoltzmannGeneratorBuilder:
             self.add_split(what[i], (split1, split2), [split1_indices, split2_indices])
 
             to_be_merged.append((split1, split2, what[i]))
+            to_be_merged_indices.append([split1_indices, split2_indices])
 
             on[on.index(what[i])] = split2
             what[i] = split1
@@ -459,8 +462,10 @@ class BoltzmannGeneratorBuilder:
 
         ##### Merge the split channels back #####
 
-        for split1, split2, original in to_be_merged:
-            self.add_merge((split1, split2), to=original)
+        for (split1, split2, original), indices in zip(
+            to_be_merged, to_be_merged_indices
+        ):
+            self.add_merge((split1, split2), to=original, sizes_or_indices=indices)
 
     def add_set_constant(self, what, tensor):
         if what in self.current_dims:
