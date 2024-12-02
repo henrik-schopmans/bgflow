@@ -128,6 +128,6 @@ class ResidualNet(nn.Module):
         outputs = self.final_layer(temps)
 
         if self.output_gate_fn is not None:
-            outputs *= self.output_gate_fn(context)
+            outputs = self.output_gate_fn(outputs, context=context)
 
         return outputs
