@@ -95,9 +95,14 @@ def _make_residual_conditioner(
     dim_out,
     context_dims=0,
     init_identity=True,
+    init_zero=False,
     activation=F.relu,
     output_gate_fn=None,
 ):
+    assert not (
+        init_identity and init_zero
+    ), "Cannot initialize to both zero and identity"
+
     net = ResidualNet(
         in_features=dim_in,
         out_features=dim_out,
@@ -117,6 +122,10 @@ def _make_residual_conditioner(
         torch.nn.init.constant_(
             net.final_layer.bias, np.log(np.exp(1 - DEFAULT_MIN_DERIVATIVE) - 1)
         )
+
+    if init_zero:
+        torch.nn.init.constant_(net.final_layer.weight, 0.0)
+        torch.nn.init.constant_(net.final_layer.bias, 0.0)
 
     return net
 
