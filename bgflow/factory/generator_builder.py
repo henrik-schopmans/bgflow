@@ -299,6 +299,7 @@ class BoltzmannGeneratorBuilder:
         conditioner_type=None,
         transformer_type=None,
         transformer_kwargs=dict(),
+        conditioner_factory=None,
         **conditioner_kwargs,
     ):
         """Add a coupling layer, i.e. a transformation of the tensor(s) `what`
@@ -435,6 +436,7 @@ class BoltzmannGeneratorBuilder:
             conditioners = make_conditioners(
                 transformer_type=transformer_type,
                 conditioner_type=conditioner_type,
+                conditioner_factory=conditioner_factory,
                 transformer_kwargs=transformer_kwargs,
                 what=what,
                 on=on,

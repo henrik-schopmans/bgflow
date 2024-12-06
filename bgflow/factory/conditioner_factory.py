@@ -29,6 +29,7 @@ def make_conditioners(
     shape_info,
     transformer_kwargs={},
     conditioner_type="dense",
+    conditioner_factory=None,
     **kwargs
 ):
     """Create coupling layer conditioners for a given transformer type,
@@ -58,7 +59,12 @@ def make_conditioners(
     -------
     transformer : bg.Transformer
     """
-    net_factory = CONDITIONER_FACTORIES[conditioner_type]
+
+    net_factory = (
+        CONDITIONER_FACTORIES[conditioner_type]
+        if conditioner_factory is None
+        else conditioner_factory
+    )
     dim_out_factory = CONDITIONER_OUT_DIMS[transformer_type]
 
     dim_out = dim_out_factory(
