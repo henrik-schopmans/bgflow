@@ -91,7 +91,7 @@ def _make_dense_conditioner(
     dim_out,
     context_dims=0,
     hidden=(128, 128),
-    activation=torch.nn.SiLU(),
+    activation=torch.nn.ReLU(),
     **kwargs,
 ):
     return bg.DenseNet([dim_in + context_dims, *hidden, dim_out], activation=activation)
