@@ -90,11 +90,24 @@ def _make_dense_conditioner(
     dim_in,
     dim_out,
     context_dims=0,
+    init_identity=True,
     hidden=(128, 128),
     activation=torch.nn.ReLU(),
     **kwargs,
 ):
-    return bg.DenseNet([dim_in + context_dims, *hidden, dim_out], activation=activation)
+    net = bg.DenseNet(
+        [dim_in + context_dims, *hidden, dim_out],
+        activation=activation,
+    )
+
+    if init_identity:
+        DEFAULT_MIN_DERIVATIVE = 1e-3
+        torch.nn.init.constant_(net._layers[-1].weight, 0.0)
+        torch.nn.init.constant_(
+            net._layers[-1].bias, np.log(np.exp(1 - DEFAULT_MIN_DERIVATIVE) - 1)
+        )
+
+    return net
 
 
 def _make_residual_conditioner(
