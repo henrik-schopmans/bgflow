@@ -30,7 +30,7 @@ def make_conditioners(
     transformer_kwargs={},
     conditioner_type="dense",
     conditioner_factory=None,
-    **kwargs
+    **kwargs,
 ):
     """Create coupling layer conditioners for a given transformer type,
     taking care of circular and non-circular tensors.
@@ -92,6 +92,7 @@ def _make_dense_conditioner(
     context_dims=0,
     hidden=(128, 128),
     activation=torch.nn.SiLU(),
+    **kwargs,
 ):
     return bg.DenseNet([dim_in + context_dims, *hidden, dim_out], activation=activation)
 
@@ -104,6 +105,7 @@ def _make_residual_conditioner(
     init_zero=False,
     activation=F.relu,
     output_gate_fn=None,
+    **kwargs,
 ):
     assert not (
         init_identity and init_zero
@@ -292,6 +294,7 @@ def _make_GNN_conditioner(
     context_dims=0,
     hidden=(128, 128),
     activation=torch.nn.SiLU(),
+    **kwargs,
 ):
     """
     build an nequip GNN and plug it into the Transformer as conditioner network.
