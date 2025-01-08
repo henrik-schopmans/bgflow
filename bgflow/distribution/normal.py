@@ -238,8 +238,8 @@ class TruncatedNormalDistribution(Energy, Sampler):
 
         return self._sample_impl(n_samples, temperature, rand_samples=rand_samples)
 
-    def _energy(self, x):
-        """The energy is the same as for a untruncated normal distribution
+    def _energy(self, x, normalized=True):
+        """If normalized=False, the energy is the same as for a untruncated normal distribution
         (only the partition function changes).
 
         Raises
@@ -247,16 +247,20 @@ class TruncatedNormalDistribution(Energy, Sampler):
         ValueError
             If input is out of bounds and assert_ranges is True.
         """
-        energies = (
-            (x - self._mu) / self._sigma
-        ) ** 2  # the sqrt(2) amounts to the 0.5 factor (see return statement)
-        if self.assert_range:
-            if (x < self._lower_bound).any() or (x > self._upper_bound).any():
-                raise ValueError("input out of bounds")
+
+        if not normalized:
+            energies = (
+                (x - self._mu) / self._sigma
+            ) ** 2  # the sqrt(2) amounts to the 0.5 factor (see return statement)
+            if self.assert_range:
+                if (x < self._lower_bound).any() or (x > self._upper_bound).any():
+                    raise ValueError("input out of bounds")
+            else:
+                energies[x < self._lower_bound] = np.infty
+                energies[x > self._upper_bound] = np.infty
+            return 0.5 * energies.sum(dim=-1, keepdim=True)
         else:
-            energies[x < self._lower_bound] = np.infty
-            energies[x > self._upper_bound] = np.infty
-        return 0.5 * energies.sum(dim=-1, keepdim=True)
+            return -self.log_prob(x).sum(dim=-1, keepdim=True)
 
     def icdf(self, x):
         r = self.Z * x + self._cdf_lower_bound
